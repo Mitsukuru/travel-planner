@@ -23,7 +23,7 @@ const page: React.FC = () => {
           <p className="text-xl md:text-2xl mb-10 text-center max-w-2xl">
             思い出に残る旅行を、もっと簡単に。もっと楽しく。
           </p>
-          <Link href="/create-group" className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg">
+          <Link href="/group/new" className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg">
             はじめる
           </Link>
         </div>
@@ -168,7 +168,7 @@ const page: React.FC = () => {
             今すぐ「旅のしおり」で、次の冒険を計画しましょう。
             簡単な操作で、忘れられない思い出づくりをサポートします。
           </p>
-          <Link href="/create-group" className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg inline-block">
+          <Link href="/group/new" className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg inline-block">
             無料ではじめる
           </Link>
         </div>
