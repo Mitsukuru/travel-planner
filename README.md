@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Travel Planner
 
-## Getting Started
+このプロジェクトは[Next.js](https://nextjs.org)を使用し、[`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app)でブートストラップされたウェブアプリケーションです。
 
-First, run the development server:
+旅行計画を簡単に作成・管理できるウェブアプリケーションです。
+
+## プロジェクト概要
+
+このアプリケーションは、最新のウェブ技術を活用した旅行計画プラットフォームです。
+
+### 主要な機能
+- 地図表示と操作（Google Maps API連携）
+- 旅行プランの作成と管理
+- GraphQLを使用したデータの取得と操作
+- レスポンシブデザイン対応
+
+### 技術スタック
+- **フロントエンド**
+  - Next.js 15.2.0
+  - React 19.0.0
+  - TailwindCSS
+  - Radix UI（UIコンポーネント）
+  - Google Maps API
+
+- **バックエンド/API**
+  - GraphQL (Apollo Server & Client)
+  - Next.js API Routes
+
+- **開発環境**
+  - TypeScript
+  - ESLint
+  - Turbopack
+  - GraphQL Code Generator
+
+## はじめに
+
+まず、開発サーバーを起動します：
 
 ```bash
 npm run dev
-# or
+# または
 yarn dev
-# or
+# または
 pnpm dev
-# or
+# または
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで[http://localhost:3000](http://localhost:3000)を開くと、アプリケーションが表示されます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`app/page.tsx`を編集することでページの内容を変更できます。ファイルを編集すると、ページは自動的に更新されます。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+このプロジェクトでは、[`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)を使用して、Vercelの新しいフォントファミリーである[Geist](https://vercel.com/font)を自動的に最適化して読み込んでいます。
 
-## Learn More
+## 開発環境のセットアップ
 
-To learn more about Next.js, take a look at the following resources:
+1. リポジトリのクローン
+```bash
+git clone [repository-url]
+cd travel-planner
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. 依存関係のインストール
+```bash
+npm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. 開発サーバーの起動
+```bash
+npm run dev
+```
 
-## Deploy on Vercel
+4. ブラウザで以下のURLにアクセス
+```
+http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 詳細情報
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.jsについて詳しく学ぶには、以下のリソースをご覧ください：
+
+- [Next.jsドキュメント](https://nextjs.org/docs) - Next.jsの機能とAPIについて学ぶ
+- [Next.jsラーニングガイド](https://nextjs.org/learn) - インタラクティブなNext.jsチュートリアル
+
+[Next.jsのGitHubリポジトリ](https://github.com/vercel/next.js)もご覧ください。フィードバックや貢献を歓迎しています！
+
+## Vercelへのデプロイ
+
+Next.jsアプリをデプロイする最も簡単な方法は、Next.jsの作者が提供する[Vercelプラットフォーム](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)を使用することです。
+
+詳しくは[Next.jsデプロイメントドキュメント](https://nextjs.org/docs/app/building-your-application/deploying)をご覧ください。
+
+## 環境変数の設定
+
+以下の環境変数が必要です：
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+NEXT_PUBLIC_API_URL=your_api_url
+```
+
+## ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。
