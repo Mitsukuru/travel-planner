@@ -26,7 +26,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const [notes, setNotes] = useState("");
   const [type, setType] = useState(typeOptions[0].value);
 
-  const [insertActivity, { loading, error }] = useMutation(INSERT_ACTIVITIES);
+  const [insertActivity] = useMutation(INSERT_ACTIVITIES);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

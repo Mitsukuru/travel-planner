@@ -42,6 +42,7 @@ interface Activity {
   type: string;
   name: string;
   notes?: string;
+  date:  Date;
 }
 
 interface DayPlan {
@@ -72,9 +73,9 @@ export default function TravelPlanner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recommendationType, setRecommendationType] = useState("nearby");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
+  const [currentActivity] = useState<Activity | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [localActivities, setLocalActivities] = useState<any[]>([]);
+  const [localActivities] = useState<Activity[]>([]);
   
 
   if (loading) {
@@ -126,9 +127,9 @@ export default function TravelPlanner() {
   }
 
   const travelPlan = itinerariesData.itineraries[0];
-  const startDate: any = new Date(travelPlan.start_date);
-  const endDate: any = new Date(travelPlan.end_date);
-  const termDay = (endDate - startDate) / 86400000;
+  const startDate: Date = new Date(travelPlan.start_date);
+  const endDate: Date = new Date(travelPlan.end_date);
+  const termDay = Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000);
 
   const tripInfo: TripInfo = {
     destination: travelPlan.destination,
@@ -169,7 +170,7 @@ export default function TravelPlanner() {
   }));
 
   if (activitiesData?.activities) {
-    activitiesData.activities.forEach((activity: any) => {
+    activitiesData.activities.forEach((activity: Activity) => {
       const d = day(activity.date);
       if (groupedActivities[d - 1]) {
         groupedActivities[d - 1].activities.push({
@@ -177,6 +178,7 @@ export default function TravelPlanner() {
           type: activity.type,
           name: activity.name,
           notes: activity.notes,
+          date: activity.date,
         });
       }
     });
@@ -219,11 +221,6 @@ export default function TravelPlanner() {
         tags: ["世界遺産", "寺院", "庭園"],
       },
     ];
-  };
-
-  // アクティビティ追加ハンドラ
-  const handleAddActivity = (activity: any) => {
-    setLocalActivities((prev) => [...prev, activity]);
   };
 
   return (
@@ -524,9 +521,11 @@ export default function TravelPlanner() {
                         <div className="flex">
                           {/* サムネイル画像 */}
                           <div className="w-16 h-16 rounded overflow-hidden bg-gray-200 flex-shrink-0 mr-3">
-                            <img
+                            <Image
                               src={suggestion.photo}
                               alt={suggestion.name}
+                              width={64}
+                              height={64}
                               className="w-full h-full object-cover"
                             />
                           </div>

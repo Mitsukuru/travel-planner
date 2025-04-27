@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMutation } from '@apollo/client';
 
 export default function Group() {
   const [participants, setParticipants] = useState<string[]>([]);
