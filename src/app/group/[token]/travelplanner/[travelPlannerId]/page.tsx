@@ -27,7 +27,7 @@ import {
   Search,
   Filter,
 } from "lucide-react";
-import { log } from "util";
+import AddActivityModal from "../components/AddActivityModal";
 
 interface TripInfo {
   destination: string;
@@ -73,6 +73,8 @@ export default function TravelPlanner() {
   const [recommendationType, setRecommendationType] = useState("nearby");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [localActivities, setLocalActivities] = useState<any[]>([]);
   
 
   if (loading) {
@@ -219,6 +221,11 @@ export default function TravelPlanner() {
     ];
   };
 
+  // アクティビティ追加ハンドラ
+  const handleAddActivity = (activity: any) => {
+    setLocalActivities((prev) => [...prev, activity]);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
@@ -340,7 +347,9 @@ export default function TravelPlanner() {
 
                 {/* タイムライン */}
                 <div className="space-y-6">
-                  {activities.find((day) => day.day === selectedDay)?.activities.map((activity, index) => (
+                  {activities.find((day) => day.day === selectedDay)?.activities.concat(
+                    localActivities.filter(a => day(a.date) === selectedDay)
+                  ).map((activity, index) => (
                     <div key={index} className="flex group">
                       {/* 時間列 */}
                       <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
@@ -404,7 +413,10 @@ export default function TravelPlanner() {
                     <div className="relative flex flex-col items-center">
                       <div className="w-3 h-3 rounded-full bg-gray-300"></div>
                     </div>
-                    <button className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50">
+                    <button
+                      className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                      onClick={() => setAddModalOpen(true)}
+                    >
                       <span className="text-blue-600">
                         + アクティビティを追加
                       </span>
@@ -416,7 +428,7 @@ export default function TravelPlanner() {
 
             {/* サイドバー開閉ボタン */}
             <button
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-l-md shadow-md"
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-l-md shadow-md hidden sm:block"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? (
@@ -429,8 +441,8 @@ export default function TravelPlanner() {
             {/* 右サイドバー：AIおすすめ - 開閉可能 */}
             <div
               className={`${
-                sidebarOpen ? "w-80" : "w-0"
-              } bg-white border-l border-gray-200 overflow-y-auto transition-all duration-300`}
+                sidebarOpen ? "w-90" : "w-0"
+              } bg-white border-l border-gray-200 overflow-y-auto transition-all duration-300 hidden sm:block`}
             >
               {sidebarOpen && (
                 <div className="p-4">
@@ -615,6 +627,12 @@ export default function TravelPlanner() {
           </>
         )}
       </div>
+      <AddActivityModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        itinerary_id={travelPlan.id}
+        defaultDate={travelPlan.start_date}
+      />
     </div>
   );
 }

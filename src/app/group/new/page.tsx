@@ -3,9 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMutation, useQuery } from '@apollo/client';
-import { CREATE_GROUP } from '../../../graphql/mutates';
-import { GET_ITINERARIES } from '@/graphql/queries'
+import { useMutation } from '@apollo/client';
 
 export default function Group() {
   const [participants, setParticipants] = useState<string[]>([]);
@@ -13,8 +11,6 @@ export default function Group() {
   const [tripType, setTripType] = useState('domestic');
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
-
-  const [createGroup, { loading: mutationLoading, error: mutationError, data: mutationData }] = useMutation(CREATE_GROUP);
 
 
   const prefectures = [
