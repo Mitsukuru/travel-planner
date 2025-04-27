@@ -68,8 +68,8 @@ export default function TravelPlanner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recommendationType, setRecommendationType] = useState('nearby');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
-  const { data: queryData, loading: queryLoading, error: queryError } = useQuery(GET_GROUP);
+  const [currentActivity] = useState<Activity | null>(null);
+  const { data: queryData } = useQuery(GET_GROUP);
 
   console.log(queryData);
 
@@ -354,7 +354,13 @@ export default function TravelPlanner() {
                         <div className="flex">
                           {/* サムネイル画像 */}
                           <div className="w-16 h-16 rounded overflow-hidden bg-gray-200 flex-shrink-0 mr-3">
-                            <img src={suggestion.photo} alt={suggestion.name} className="w-full h-full object-cover" />
+                            <Image
+                              src={suggestion.photo}
+                              alt={suggestion.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                           
                           <div className="flex-1">
