@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useMutation, useQuery } from '@apollo/client';
+import { CREATE_GROUP } from '../../../graphql/mutates';
+import { GET_ITINERARIES } from '@/graphql/queries'
 
 export default function Group() {
   const [participants, setParticipants] = useState<string[]>([]);
@@ -10,6 +13,9 @@ export default function Group() {
   const [tripType, setTripType] = useState('domestic');
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+
+  const [createGroup, { loading: mutationLoading, error: mutationError, data: mutationData }] = useMutation(CREATE_GROUP);
+
 
   const prefectures = [
     '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
@@ -288,6 +294,14 @@ export default function Group() {
                 </label>
               </div>
             </div>
+            {/* ヒント */}
+            <div className="mt-8 bg-blue-50 p-4 rounded-lg">
+              <h3 className="font-medium text-blue-800">💡<b>ヒント</b></h3>
+              <p className="text-sm text-blue-700 mt-1">
+                目的や好みを選択すると、あなたの旅行に合わせたおすすめスポットが表示されます。
+                より詳細な情報を入力すると、よりパーソナライズされた旅のプランを提案できます。
+              </p>
+            </div>
 
             {/* 参加者 */}
             <div>
@@ -343,15 +357,6 @@ export default function Group() {
               </button>
             </div>
           </form>
-        </div>
-
-        {/* ヒント */}
-        <div className="mt-8 bg-blue-50 p-4 rounded-lg">
-          <h3 className="font-medium text-blue-800">ヒント</h3>
-          <p className="text-sm text-blue-700 mt-1">
-            目的や好みを選択すると、あなたの旅行に合わせたおすすめスポットが表示されます。
-            より詳細な情報を入力すると、よりパーソナライズされた旅のプランを提案できます。
-          </p>
         </div>
       </main>
     </div>
