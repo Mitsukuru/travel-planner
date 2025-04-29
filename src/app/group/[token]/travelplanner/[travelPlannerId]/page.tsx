@@ -228,7 +228,7 @@ export default function TravelPlanner() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="container ml-4 flex">
+        <div className="container ml-4 flex w-auto">
           <div className="max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex items-center">
             <Link href="/" className="flex items-center">
               <Image
