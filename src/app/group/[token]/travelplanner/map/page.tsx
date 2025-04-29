@@ -3,6 +3,14 @@
 import { useState, useCallback } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 
+interface Place {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  details: string;
+}
+
 const containerStyle = {
   width: 'auto',
   height: '100%'
@@ -39,13 +47,13 @@ const sampleLocations = [
 
 const MapPage = () => {
   const [selectedDay] = useState(1);
-  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   const onLoad = useCallback(() => {
     // マップの初期設定をここで行えます
   }, []);
 
-  const handleMarkerClick = (place) => {
+  const handleMarkerClick = (place: Place) => {
     setSelectedPlace(place);
   };
 
