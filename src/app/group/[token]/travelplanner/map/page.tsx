@@ -60,7 +60,7 @@ const MapPage = () => {
   return (
     <div className="w-full h-screen">
       <div className="w-full h-[calc(100vh-4rem)]">
-        <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}>
+        <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string}>
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
