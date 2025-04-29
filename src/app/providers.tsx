@@ -2,6 +2,14 @@
 
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
+if (!process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT) {
+  throw new Error('NEXT_PUBLIC_GRAPHQL_ENDPOINT is not defined');
+}
+
+if (!process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET) {
+  throw new Error('NEXT_PUBLIC_HASURA_ADMIN_SECRET is not defined');
+}
+
 const client = new ApolloClient({
   uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT,
   cache: new InMemoryCache(),
