@@ -76,6 +76,7 @@ export default function TravelPlanner() {
   const [currentActivity] = useState<Activity | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [localActivities] = useState<Activity[]>([]);
+  const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
   
 
   if (loading) {
@@ -129,7 +130,7 @@ export default function TravelPlanner() {
   const travelPlan = itinerariesData.itineraries[0];
   const startDate: Date = new Date(travelPlan.start_date);
   const endDate: Date = new Date(travelPlan.end_date);
-  const termDay = Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000);
+  const termDay = Math.ceil((endDate.getTime() - startDate.getTime() + 1) / 86400000);
 
   const tripInfo: TripInfo = {
     destination: travelPlan.destination,
@@ -283,348 +284,413 @@ export default function TravelPlanner() {
       </nav>
 
       {/* メインコンテンツ */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 左サイドバー：日程選択 */}
-        <div className="w-48 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="p-4">
-            <h2 className="font-semibold text-gray-700 mb-2">日程</h2>
-            <div className="space-y-1">
-              {Array.from({ length: tripInfo.days }, (_, i) => (
-                <button
-                  key={i}
-                  className={`w-full text-left px-3 py-2 rounded-md ${
-                    selectedDay === i + 1
-                      ? "bg-blue-100 text-blue-700"
-                      : "hover:bg-gray-100"
-                  }`}
-                  onClick={() => setSelectedDay(i + 1)}
-                >
-                  {i + 1}日目
-                </button>
-              ))}
-            </div>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* モバイル用日程選択 */}
+        <div className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => setIsMobileParticipantsOpen(!isMobileParticipantsOpen)}
+              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+            >
+              <Users className="w-5 h-5 mr-1" />
+              <span>{tripInfo.participants.length}人</span>
+            </button>
           </div>
 
-          <div className="p-4 border-t border-gray-200">
-            <h2 className="font-semibold text-gray-700 mb-2">参加者</h2>
-            <div className="space-y-2">
-              {tripInfo.participants.map((person, index) => (
-                <div
-                  key={index}
-                  className="flex items-center text-sm text-gray-600"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  {person}
-                </div>
-              ))}
-              <button className="text-blue-600 text-sm flex items-center mt-2">
-                + 参加者を追加
-              </button>
-            </div>
-          </div>
-        </div>
-        {activeTab === "map" ? (
-          <MapPage />
-        ) : (
-          <>
-            {/* メインエリア：日程詳細 */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-800">
-                    {selectedDay}日目
-                  </h2>
+          {/* モバイル用日程タブ */}
+          <div className="px-4 pb-2">
+            <div className="flex overflow-x-auto scrollbar-hide -mx-4 px-4">
+              <div className="flex space-x-2 min-w-full">
+                {Array.from({ length: tripInfo.days }, (_, i) => (
                   <button
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md"
-                    onClick={() => setEditMode(!editMode)}
+                    key={i}
+                    className={`flex-none px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      selectedDay === i + 1
+                        ? "bg-blue-100 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                    onClick={() => setSelectedDay(i + 1)}
                   >
-                    {editMode ? "完了" : "編集"}
+                    {i + 1}日目
                   </button>
-                </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
-                {/* タイムライン */}
-                <div className="space-y-6">
-                  {activities.find((day) => day.day === selectedDay)?.activities.concat(
-                    localActivities.filter(a => day(a.date) === selectedDay)
-                  ).map((activity, index) => (
-                    <div key={index} className="flex group">
-                      {/* 時間列 */}
-                      <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                        {activity.time}
+          {/* モバイル用参加者メニュー */}
+          {isMobileParticipantsOpen && (
+            <div className="fixed inset-0 z-50">
+              <div className="absolute inset-0 bg-black bg-opacity-25" onClick={() => setIsMobileParticipantsOpen(false)} />
+              <div className="absolute top-[64px] right-4 w-64 bg-white border border-gray-200 shadow-lg rounded-lg">
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-700 mb-2">参加者</h3>
+                  <div className="space-y-2">
+                    {tripInfo.participants.map((person, index) => (
+                      <div key={index} className="flex items-center text-sm text-gray-600">
+                        <Users className="w-4 h-4 mr-2" />
+                        {person}
                       </div>
-
-                      {/* タイムラインの縦線 */}
-                      <div className="relative flex flex-col items-center">
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                        {index <
-                          (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
-                          1 && (
-                          <div className="w-px bg-gray-300 h-full"></div>
-                        )}
-                      </div>
-
-                      {/* 内容 */}
-                      <div className="ml-4 bg-white rounded-lg border border-gray-200 p-4 flex-1 shadow-sm group-hover:shadow">
-                        <div className="flex justify-between">
-                          <div className="flex items-start">
-                            <div className="mr-3">
-                              {getActivityIcon(activity.type)}
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-gray-800">
-                                {activity.name}
-                              </h3>
-                              <p className="text-gray-600 text-sm mt-1">
-                                {activity.notes}
-                              </p>
-                            </div>
-                          </div>
-                          {editMode && (
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-5 w-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 9l-7 7-7-7"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* アクティビティ追加ボタン */}
-                  <div className="flex">
-                    <div className="w-20"></div>
-                    <div className="relative flex flex-col items-center">
-                      <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                    </div>
-                    <button
-                      className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
-                      onClick={() => setAddModalOpen(true)}
-                    >
-                      <span className="text-blue-600">
-                        + アクティビティを追加
-                      </span>
+                    ))}
+                    <button className="text-blue-600 text-sm flex items-center mt-2">
+                      + 参加者を追加
                     </button>
                   </div>
                 </div>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* サイドバー開閉ボタン */}
-            <button
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-l-md shadow-md hidden sm:block"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              {sidebarOpen ? (
-                <ChevronRight className="w-4 h-4" />
-              ) : (
-                <ChevronLeft className="w-4 h-4" />
-              )}
-            </button>
-
-            {/* 右サイドバー：AIおすすめ - 開閉可能 */}
-            <div
-              className={`${
-                sidebarOpen ? "w-90" : "w-0"
-              } bg-white border-l border-gray-200 overflow-y-auto transition-all duration-300 hidden sm:block`}
-            >
-              {sidebarOpen && (
-                <div className="p-4">
-                  <h2 className="font-semibold text-gray-700 mb-2">
-                    AIおすすめ
-                  </h2>
-
-                  {/* 現在の場所コンテキスト */}
-                  {currentActivity && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-700">
-                        <span className="font-medium">
-                          {currentActivity.name}
-                        </span>{" "}
-                        周辺のおすすめです
-                      </p>
-                    </div>
-                  )}
-
-                  {/* 検索バー */}
-                  <div className="mb-4">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="場所やキーワードを検索..."
-                        className="w-full border border-gray-300 rounded-md py-2 pl-8 pr-2 text-sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                      <Search className="absolute left-2 top-2 w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
-
-                  {/* AIおすすめカテゴリ */}
-                  <div
-                    className="mb-4 overflow-x-auto"
-                    style={{ scrollbarWidth: "none" }}
+        <div className="flex flex-1 overflow-hidden">
+          {/* デスクトップ用サイドバー */}
+          <div className="hidden lg:block w-48 bg-white border-r border-gray-200 overflow-y-auto">
+            <div className="p-4">
+              <h2 className="font-semibold text-gray-700 mb-2">日程</h2>
+              <div className="space-y-1">
+                {Array.from({ length: tripInfo.days }, (_, i) => (
+                  <button
+                    key={i}
+                    className={`w-full text-left px-3 py-2 rounded-md ${
+                      selectedDay === i + 1
+                        ? "bg-blue-100 text-blue-700"
+                        : "hover:bg-gray-100"
+                    }`}
+                    onClick={() => setSelectedDay(i + 1)}
                   >
-                    <div className="flex space-x-2">
-                      {aiRecommendationCategories.map((category) => (
-                        <button
-                          key={category.id}
-                          className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium flex items-center ${
-                            recommendationType === category.id
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                          onClick={() => setRecommendationType(category.id)}
-                        >
-                          <span className="mr-1">{category.icon}</span>
-                          {category.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    {i + 1}日目
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  {/* AIフィルター */}
-                  <div className="mb-4 flex items-center text-sm">
-                    <Filter className="w-4 h-4 text-gray-500 mr-1" />
-                    <span className="text-gray-700 mr-2">フィルター:</span>
-                    <select className="border border-gray-300 rounded px-2 py-1 text-xs">
-                      <option>すべてのタイプ</option>
-                      <option>観光スポット</option>
-                      <option>飲食店</option>
-                      <option>アクティビティ</option>
-                    </select>
-                    <button className="ml-auto text-blue-600 text-xs">
-                      AI分析
+            <div className="p-4 border-t border-gray-200">
+              <h2 className="font-semibold text-gray-700 mb-2">参加者</h2>
+              <div className="space-y-2">
+                {tripInfo.participants.map((person, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center text-sm text-gray-600"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    {person}
+                  </div>
+                ))}
+                <button className="text-blue-600 text-sm flex items-center mt-2">
+                  + 参加者を追加
+                </button>
+              </div>
+            </div>
+          </div>
+          {activeTab === "map" ? (
+            <MapPage />
+          ) : (
+            <>
+              {/* メインエリア：日程詳細 */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 lg:p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-gray-800 hidden lg:block">
+                      {selectedDay}日目
+                    </h2>
+                    <button
+                      className="bg-blue-600 text-white px-3 py-1.5 lg:px-4 lg:py-2 rounded-md text-sm lg:text-base"
+                      onClick={() => setEditMode(!editMode)}
+                    >
+                      {editMode ? "完了" : "編集"}
                     </button>
                   </div>
 
-                  {/* おすすめリスト */}
-                  <div className="space-y-4">
-                    {getRecommendations().map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow cursor-pointer transition-all"
-                      >
-                        <div className="flex">
-                          {/* サムネイル画像 */}
-                          <div className="w-16 h-16 rounded overflow-hidden bg-gray-200 flex-shrink-0 mr-3">
-                            <Image
-                              src={suggestion.photo}
-                              alt={suggestion.name}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                  {/* タイムライン */}
+                  <div className="space-y-4 lg:space-y-6">
+                    {activities.find((day) => day.day === selectedDay)?.activities.concat(
+                      localActivities.filter(a => day(a.date) === selectedDay)
+                    )
+                    .sort((a, b) => {
+                      const timeA = a.time.split(':').map(Number);
+                      const timeB = b.time.split(':').map(Number);
+                      return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+                    })
+                    .map((activity, index) => (
+                      <div key={index} className="flex group">
+                        {/* 時間列 */}
+                        <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
+                          {activity.time}
+                        </div>
 
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-medium text-gray-800 flex items-center">
-                                  {getActivityIcon(suggestion.type)}
-                                  <span className="ml-1">
-                                    {suggestion.name}
-                                  </span>
-                                </h3>
-                                <div className="flex items-center mt-1">
-                                  <Star className="w-3 h-3 text-yellow-400" />
-                                  <span className="text-xs text-gray-600 ml-1">
-                                    {suggestion.rating}
-                                  </span>
+                        {/* タイムラインの縦線 */}
+                        <div className="relative flex flex-col items-center">
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          {index <
+                            (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
+                            1 && (
+                            <div className="w-px bg-gray-300 h-full"></div>
+                          )}
+                        </div>
 
-                                  {suggestion.distance && (
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      • {suggestion.distance}
-                                    </span>
-                                  )}
-
-                                  {suggestion.price && (
-                                    <span className="text-xs text-gray-600 ml-2">
-                                      {suggestion.price}
-                                    </span>
-                                  )}
-
-                                  {suggestion.visitTime && (
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      • {suggestion.visitTime}
-                                    </span>
-                                  )}
-
-                                  {suggestion.bestTime && (
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      • {suggestion.bestTime}
-                                    </span>
-                                  )}
-                                </div>
+                        {/* 内容 */}
+                        <div className="ml-4 bg-white rounded-lg border border-gray-200 p-4 flex-1 shadow-sm group-hover:shadow">
+                          <div className="flex justify-between">
+                            <div className="flex items-start">
+                              <div className="mr-3">
+                                {getActivityIcon(activity.type)}
                               </div>
-                              <button className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                                追加
-                              </button>
+                              <div>
+                                <h3 className="font-medium text-gray-800">
+                                  {activity.name}
+                                </h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                  {activity.notes}
+                                </p>
+                              </div>
                             </div>
-
-                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                              {suggestion.description}
-                            </p>
-
-                            {/* タグ */}
-                            {suggestion.tags && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {suggestion.tags.map((tag, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800"
+                            {editMode && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="text-gray-400 hover:text-gray-600">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
                                   >
-                                    <Tag className="w-2 h-2 mr-1" />
-                                    {tag}
-                                  </span>
-                                ))}
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
                     ))}
-                  </div>
 
-                  {/* AIパーソナライズド提案 */}
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                    <h3 className="font-medium text-blue-800 mb-2 flex items-center">
-                      <span className="mr-2">✨</span>
-                      あなただけのAI提案
-                    </h3>
-                    <p className="text-sm text-blue-700 mb-3">
-                      現在の旅程分析から、以下のプランをおすすめします：
-                    </p>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <h4 className="font-medium text-gray-800">
-                        嵐山&rarr;金閣寺&rarr;銀閣寺コース
-                      </h4>
-                      <p className="text-xs text-gray-600 mt-1">
-                        効率的な移動で京都の名所を網羅できるルートです。所要時間は約6時間です。
-                      </p>
-                      <button className="mt-2 w-full bg-blue-100 text-blue-700 text-xs font-medium py-1 rounded">
-                        詳細を見る
+                    {/* アクティビティ追加ボタン */}
+                    <div className="flex">
+                      <div className="w-20"></div>
+                      <div className="relative flex flex-col items-center">
+                        <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                      </div>
+                      <button
+                        className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        onClick={() => setAddModalOpen(true)}
+                      >
+                        <span className="text-blue-600">
+                          + アクティビティを追加
+                        </span>
                       </button>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </>
-        )}
+              </div>
+
+              {/* サイドバー開閉ボタン */}
+              <button
+                className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-l-md shadow-md hidden sm:block"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                {sidebarOpen ? (
+                  <ChevronRight className="w-4 h-4" />
+                ) : (
+                  <ChevronLeft className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* 右サイドバー：AIおすすめ - 開閉可能 */}
+              <div
+                className={`${
+                  sidebarOpen ? "w-90" : "w-0"
+                } bg-white border-l border-gray-200 overflow-y-auto transition-all duration-300 hidden sm:block`}
+              >
+                {sidebarOpen && (
+                  <div className="p-4">
+                    <h2 className="font-semibold text-gray-700 mb-2">
+                      AIおすすめ
+                    </h2>
+
+                    {/* 現在の場所コンテキスト */}
+                    {currentActivity && (
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                          <span className="font-medium">
+                            {currentActivity.name}
+                          </span>{" "}
+                          周辺のおすすめです
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 検索バー */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="場所やキーワードを検索..."
+                          className="w-full border border-gray-300 rounded-md py-2 pl-8 pr-2 text-sm"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Search className="absolute left-2 top-2 w-4 h-4 text-gray-400" />
+                      </div>
+                    </div>
+
+                    {/* AIおすすめカテゴリ */}
+                    <div
+                      className="mb-4 overflow-x-auto"
+                      style={{ scrollbarWidth: "none" }}
+                    >
+                      <div className="flex space-x-2">
+                        {aiRecommendationCategories.map((category) => (
+                          <button
+                            key={category.id}
+                            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium flex items-center ${
+                              recommendationType === category.id
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                            onClick={() => setRecommendationType(category.id)}
+                          >
+                            <span className="mr-1">{category.icon}</span>
+                            {category.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* AIフィルター */}
+                    <div className="mb-4 flex items-center text-sm">
+                      <Filter className="w-4 h-4 text-gray-500 mr-1" />
+                      <span className="text-gray-700 mr-2">フィルター:</span>
+                      <select className="border border-gray-300 rounded px-2 py-1 text-xs">
+                        <option>すべてのタイプ</option>
+                        <option>観光スポット</option>
+                        <option>飲食店</option>
+                        <option>アクティビティ</option>
+                      </select>
+                      <button className="ml-auto text-blue-600 text-xs">
+                        AI分析
+                      </button>
+                    </div>
+
+                    {/* おすすめリスト */}
+                    <div className="space-y-4">
+                      {getRecommendations().map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow cursor-pointer transition-all"
+                        >
+                          <div className="flex">
+                            {/* サムネイル画像 */}
+                            <div className="w-16 h-16 rounded overflow-hidden bg-gray-200 flex-shrink-0 mr-3">
+                              <Image
+                                src={suggestion.photo}
+                                alt={suggestion.name}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h3 className="font-medium text-gray-800 flex items-center">
+                                    {getActivityIcon(suggestion.type)}
+                                    <span className="ml-1">
+                                      {suggestion.name}
+                                    </span>
+                                  </h3>
+                                  <div className="flex items-center mt-1">
+                                    <Star className="w-3 h-3 text-yellow-400" />
+                                    <span className="text-xs text-gray-600 ml-1">
+                                      {suggestion.rating}
+                                    </span>
+
+                                    {suggestion.distance && (
+                                      <span className="text-xs text-gray-500 ml-2">
+                                        • {suggestion.distance}
+                                      </span>
+                                    )}
+
+                                    {suggestion.price && (
+                                      <span className="text-xs text-gray-600 ml-2">
+                                        {suggestion.price}
+                                      </span>
+                                    )}
+
+                                    {suggestion.visitTime && (
+                                      <span className="text-xs text-gray-500 ml-2">
+                                        • {suggestion.visitTime}
+                                      </span>
+                                    )}
+
+                                    {suggestion.bestTime && (
+                                      <span className="text-xs text-gray-500 ml-2">
+                                        • {suggestion.bestTime}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                                  追加
+                                </button>
+                              </div>
+
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                {suggestion.description}
+                              </p>
+
+                              {/* タグ */}
+                              {suggestion.tags && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {suggestion.tags.map((tag, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800"
+                                    >
+                                      <Tag className="w-2 h-2 mr-1" />
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* AIパーソナライズド提案 */}
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <h3 className="font-medium text-blue-800 mb-2 flex items-center">
+                        <span className="mr-2">✨</span>
+                        あなただけのAI提案
+                      </h3>
+                      <p className="text-sm text-blue-700 mb-3">
+                        現在の旅程分析から、以下のプランをおすすめします：
+                      </p>
+                      <div className="bg-white p-3 rounded-md shadow-sm">
+                        <h4 className="font-medium text-gray-800">
+                          嵐山&rarr;金閣寺&rarr;銀閣寺コース
+                        </h4>
+                        <p className="text-xs text-gray-600 mt-1">
+                          効率的な移動で京都の名所を網羅できるルートです。所要時間は約6時間です。
+                        </p>
+                        <button className="mt-2 w-full bg-blue-100 text-blue-700 text-xs font-medium py-1 rounded">
+                          詳細を見る
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
       <AddActivityModal
         isOpen={addModalOpen}
