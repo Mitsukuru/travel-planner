@@ -38,7 +38,7 @@ const sampleLocations = [
 ];
 
 const MapPage = () => {
-  const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedDay] = useState(1);
   const [selectedPlace, setSelectedPlace] = useState(null);
 
   const onLoad = useCallback(() => {
