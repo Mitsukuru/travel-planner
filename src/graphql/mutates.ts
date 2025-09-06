@@ -8,7 +8,7 @@ export const INSERT_ACTIVITIES = gql`
     $notes: String
     $type: String
     $date: date
-    $time: timetz
+    $time: time
   ) {
     insert_activities(
       objects: {
