@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 
 interface Place {
   id: number;
@@ -49,6 +49,11 @@ const MapPage = () => {
   const [selectedDay] = useState(1);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string
+  });
+
   const onLoad = useCallback(() => {
     // マップの初期設定をここで行えます
   }, []);
@@ -60,7 +65,7 @@ const MapPage = () => {
   return (
     <div className="w-full h-screen">
       <div className="w-full h-[calc(100vh-4rem)]">
-        <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string}>
+        {isLoaded ? (
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
@@ -89,7 +94,7 @@ const MapPage = () => {
               </InfoWindow>
             )}
           </GoogleMap>
-        </LoadScript>
+        ) : <div>Loading...</div>}
       </div>
     </div>
   );
