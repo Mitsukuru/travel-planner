@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client";
 import Link from "next/link";
 import Image from "next/image";
 import MapPage from "../map/page";
+import BudgetPage from "../budget/page";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
 import {
   MapPin,
@@ -384,6 +385,8 @@ export default function TravelPlanner() {
           </div>
           {activeTab === "map" ? (
             <MapPage />
+          ) : activeTab === "budget" ? (
+            <BudgetPage />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}
