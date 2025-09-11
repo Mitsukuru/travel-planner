@@ -20,6 +20,16 @@ const budgetCategories = [
   { label: 'その他', value: 'other' },
 ];
 
+// アクティビティタイプの日本語マッピング
+const activityTypeLabels: { [key: string]: string } = {
+  transport: '交通',
+  sightseeing: '観光スポット',
+  restaurant: '飲食店',
+  hotel: 'ホテル',
+  activity: 'アクティビティ',
+  area: 'エリア',
+};
+
 const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   isOpen,
   onClose,
@@ -183,11 +193,16 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
               onChange={(e) => handleInputChange('activityId', e.target.value)}
             >
               <option value="">アクティビティを選択（任意）</option>
-              {activitiesData?.activities?.map((activity: any) => (
-                <option key={activity.id} value={activity.id}>
-                  {activity.name} ({activity.type})
-                </option>
-              ))}
+              {activitiesData?.activities?.map((activity: any) => {
+                const typeLabel = activity.type 
+                  ? (activityTypeLabels[activity.type] || activity.type)
+                  : '未分類';
+                return (
+                  <option key={activity.id} value={activity.id}>
+                    {activity.name} ({typeLabel})
+                  </option>
+                );
+              })}
             </select>
             {selectedDate && activitiesData?.activities?.length === 0 && (
               <p className="text-sm text-gray-500 mt-1">
