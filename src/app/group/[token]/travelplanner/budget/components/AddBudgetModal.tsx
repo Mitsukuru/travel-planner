@@ -11,14 +11,8 @@ interface AddBudgetModalProps {
   defaultDate?: string;
 }
 
-const budgetCategories = [
-  { label: '交通費', value: 'transport' },
-  { label: '宿泊費', value: 'accommodation' },
-  { label: '食事', value: 'food' },
-  { label: '観光・アクティビティ', value: 'sightseeing' },
-  { label: 'お土産', value: 'shopping' },
-  { label: 'その他', value: 'other' },
-];
+// 参加者リスト（実際のデータに置き換える）
+const participants = ["まさあき", "たまよ", "こうすけ", "るり"];
 
 // アクティビティタイプの日本語マッピング
 const activityTypeLabels: { [key: string]: string } = {
@@ -40,10 +34,10 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   const [formData, setFormData] = useState({
     dayNumber: 1,
     activityId: '',
-    category: budgetCategories[0].value,
     amount: '',
     description: '',
-    currency: 'JPY'
+    currency: 'JPY',
+    paidBy: participants[0] // デフォルトで最初の参加者を選択
   });
 
   // 旅行プラン情報を取得
@@ -78,7 +72,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
 
   useEffect(() => {
     // デフォルトの日付から日程を計算
-    if (defaultDate && startDate) {
+    if (defaultDate && startDate && totalDays > 0) {
       const defaultDateObj = new Date(defaultDate);
       const diffTime = defaultDateObj.getTime() - startDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -86,13 +80,13 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
         setFormData(prev => ({ ...prev, dayNumber: diffDays }));
       }
     }
-  }, [defaultDate, startDate, totalDays]);
+  }, [defaultDate, startDate?.getTime(), totalDays]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.amount) {
-      alert('金額は必須です');
+    if (!formData.activityId || !formData.amount) {
+      alert('アクティビティと金額は必須です');
       return;
     }
 
@@ -101,12 +95,15 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
         variables: {
           itinerary_id: itineraryId,
           date: selectedDate,
-          activity_id: formData.activityId ? parseInt(formData.activityId) : null,
-          category: formData.category,
+          activity_id: parseInt(formData.activityId),
+          category: 'expense', // 固定値
           amount: parseFloat(formData.amount),
           description: formData.description,
           currency: formData.currency,
+          paid_by: formData.paidBy,
         },
+        refetchQueries: ['GetBudgets'],
+        awaitRefetchQueries: true,
       });
 
       onBudgetAdded();
@@ -114,10 +111,10 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
       setFormData({
         dayNumber: 1,
         activityId: '',
-        category: budgetCategories[0].value,
         amount: '',
         description: '',
-        currency: 'JPY'
+        currency: 'JPY',
+        paidBy: participants[0]
       });
     } catch (error) {
       console.error('予算の追加に失敗しました:', error);
@@ -185,14 +182,15 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           {/* アクティビティ選択 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              関連するアクティビティ（任意）
+              関連するアクティビティ <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={formData.activityId}
               onChange={(e) => handleInputChange('activityId', e.target.value)}
+              required
             >
-              <option value="">アクティビティを選択（任意）</option>
+              <option value="">アクティビティを選択してください</option>
               {activitiesData?.activities?.map((activity: any) => {
                 const typeLabel = activity.type 
                   ? (activityTypeLabels[activity.type] || activity.type)
@@ -211,20 +209,20 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
             )}
           </div>
 
-          {/* カテゴリ */}
+          {/* 建て替え者 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              カテゴリ <span className="text-red-500">*</span>
+              建て替えた人 <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
+              value={formData.paidBy}
+              onChange={(e) => handleInputChange('paidBy', e.target.value)}
               required
             >
-              {budgetCategories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
+              {participants.map((participant) => (
+                <option key={participant} value={participant}>
+                  {participant}
                 </option>
               ))}
             </select>

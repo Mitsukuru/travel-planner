@@ -414,7 +414,7 @@ export default function TravelPlanner() {
           {activeTab === "map" ? (
             <MapPage />
           ) : activeTab === "budget" ? (
-            <BudgetPage />
+            <BudgetPage selectedDay={selectedDay} />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}

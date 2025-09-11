@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_BUDGETS, GET_ITINERARIES } from '@/graphql/queries';
 import BudgetByDate from './components/BudgetByDate';
-import BudgetSummary from './components/BudgetSummary';
 import AddBudgetModal from './components/AddBudgetModal';
 
 type Nullable<T> = T | null | undefined;
@@ -28,9 +27,13 @@ interface GraphQLBudget {
   activity?: Nullable<GraphQLBudgetActivity>;
 }
 
-const BudgetPage = () => {
-  const [selectedDate, setSelectedDate] = useState<string>('');
+interface BudgetPageProps {
+  selectedDay?: number;
+}
+
+const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES);
   
@@ -38,41 +41,58 @@ const BudgetPage = () => {
   const currentItinerary = itinerariesData?.itineraries?.[0];
   const itineraryId = currentItinerary?.id;
 
+  // 選択された日の日付を計算してstateを更新
+  useEffect(() => {
+    if (currentItinerary && selectedDay) {
+      const startDate = new Date(currentItinerary.start_date);
+      const targetDate = new Date(startDate);
+      targetDate.setDate(targetDate.getDate() + selectedDay - 1);
+      const dateString = targetDate.toISOString().split('T')[0];
+      setSelectedDate(dateString);
+    }
+  }, [currentItinerary?.start_date, selectedDay]);
+
   const { data: budgetsData, loading: budgetsLoading, refetch: refetchBudgets } = useQuery(GET_BUDGETS, {
     variables: { itinerary_id: itineraryId },
     skip: !itineraryId,
   });
 
-  // 日付別にグループ化
-  const budgets: GraphQLBudget[] = (budgetsData?.budgets ?? []) as GraphQLBudget[];
-  const budgetsByDate: Record<string, GraphQLBudget[]> = budgets.reduce<Record<string, GraphQLBudget[]>>((acc, budget) => {
-    const dateKey = budget.date;
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(budget);
-    return acc;
-  }, {});
+  // 全予算データ（メモ化）
+  const budgets: GraphQLBudget[] = useMemo(() => 
+    (budgetsData?.budgets ?? []) as GraphQLBudget[], 
+    [budgetsData?.budgets]
+  );
+  
+  // 選択された日の予算のみをフィルタ（メモ化）
+  const selectedDayBudgets = useMemo(() => 
+    budgets.filter(budget => budget.date === selectedDate),
+    [budgets, selectedDate]
+  );
 
-  // 合計金額を計算
-  const totalAmount: number = budgets.reduce((sum: number, budget: GraphQLBudget) => {
-    return sum + parseFloat(budget.amount);
-  }, 0);
+  // 選択された日の合計金額を計算（メモ化）
+  const selectedDayTotal: number = useMemo(() => 
+    selectedDayBudgets.reduce((sum: number, budget: GraphQLBudget) => {
+      return sum + parseFloat(budget.amount);
+    }, 0),
+    [selectedDayBudgets]
+  );
 
-  // 日付別の合計を計算
-  const dailyTotals = Object.keys(budgetsByDate).map(date => ({
-    date,
-    total: budgetsByDate[date].reduce((sum: number, budget: GraphQLBudget) => sum + parseFloat(budget.amount), 0),
-    count: budgetsByDate[date].length
-  }));
+  // 全体の合計金額を計算（メモ化）
+  const totalAmount: number = useMemo(() => 
+    budgets.reduce((sum: number, budget: GraphQLBudget) => {
+      return sum + parseFloat(budget.amount);
+    }, 0),
+    [budgets]
+  );
 
-  const handleAddBudget = () => {
+
+  const handleAddBudget = useCallback(() => {
     setIsAddModalOpen(true);
-  };
+  }, []);
 
-  const onBudgetAdded = () => {
+  const onBudgetAdded = useCallback(() => {
     refetchBudgets();
-  };
+  }, [refetchBudgets]);
 
   if (itinerariesLoading) {
     return <div className="p-6">読み込み中...</div>;
@@ -90,97 +110,104 @@ const BudgetPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">予算管理</h1>
-              <p className="text-gray-600 mt-1">
-                {currentItinerary.title} ({currentItinerary.destination})
-              </p>
-            </div>
-            <div className="flex gap-4 items-center">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-6">
+        {/* ヘッダーセクション */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">            
+            {/* 統計とボタン */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-center lg:text-left">
+                  <div className="text-sm text-gray-600 mb-1">本日の支出</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    ¥{selectedDayTotal.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-center lg:text-left">
+                  <div className="text-sm text-gray-600 mb-1">合計予算</div>
+                  <div className="text-xl font-semibold text-gray-900">
+                    ¥{totalAmount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={handleAddBudget}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors"
               >
                 + 予算を追加
               </button>
-              <div className="text-sm text-gray-600">
-                合計予算: <span className="font-bold text-lg text-gray-900">¥{totalAmount.toLocaleString()}</span>
-              </div>
             </div>
           </div>
         </div>
 
+        {/* メインコンテンツ */}
         {!budgetsLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 左側: 日付別予算一覧 */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">日付別予算</h2>
-                {Object.keys(budgetsByDate).length === 0 ? (
-                  <p className="text-gray-500">まだ予算が登録されていません</p>
-                ) : (
-                  <div className="space-y-4">
-                    {Object.keys(budgetsByDate)
-                      .sort()
-                      .map(date => (
-                        <BudgetByDate
-                          key={date}
-                          date={date}
-                          budgets={budgetsByDate[date].map(b => ({
-                            id: b.id,
-                            activity_id: b.activity_id ?? undefined,
-                            category: b.category,
-                            amount: parseFloat(b.amount),
-                            description: b.description ?? undefined,
-                            currency: (b.currency ?? 'JPY') as string,
-                            activity: b.activity ? {
-                              id: b.activity.id,
-                              name: b.activity.name,
-                              type: b.activity.type,
-                            } : undefined,
-                          }))}
-                          itineraryId={itineraryId as number}
-                          onUpdate={onBudgetAdded}
-                        />
-                      ))}
-                  </div>
-                )}
+          <>
+            {selectedDayBudgets.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {selectedDay}日目の予算がありません
+                </h3>
+                <p className="text-gray-500 mb-6">
+                  この日の支出を記録するために予算を追加してください
+                </p>
+                <button
+                  onClick={handleAddBudget}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  最初の予算を追加
+                </button>
               </div>
-            </div>
-
-            {/* 右側: サマリー */}
-            <div className="space-y-6">
-              <BudgetSummary
-                totalAmount={totalAmount}
-                dailyTotals={dailyTotals}
-                budgets={budgets.map(b => ({
+            ) : (
+              <BudgetByDate
+                date={selectedDate}
+                budgets={selectedDayBudgets.map(b => ({
+                  id: b.id,
+                  activity_id: b.activity_id ?? undefined,
                   category: b.category,
                   amount: parseFloat(b.amount),
+                  description: b.description ?? undefined,
                   currency: (b.currency ?? 'JPY') as string,
+                  activity: b.activity ? {
+                    id: b.activity.id,
+                    name: b.activity.name,
+                    type: b.activity.type,
+                  } : undefined,
                 }))}
+                itineraryId={itineraryId as number}
+                onUpdate={onBudgetAdded}
+                onAddBudget={handleAddBudget}
               />
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         {budgetsLoading && (
-          <div className="text-center py-8">
+          <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-500">予算データを読み込み中...</p>
           </div>
         )}
 
       {/* 予算追加モーダル */}
-      <AddBudgetModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        itineraryId={itineraryId!}
-        onBudgetAdded={onBudgetAdded}
-        defaultDate={selectedDate}
-      />
+      {isAddModalOpen && (
+        <AddBudgetModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          itineraryId={itineraryId!}
+          onBudgetAdded={onBudgetAdded}
+          defaultDate={selectedDate}
+        />
+      )}
       </div>
     </div>
   );

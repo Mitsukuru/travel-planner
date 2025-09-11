@@ -90,6 +90,8 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
           amount: parseFloat(formData.amount),
           description: formData.description,
         },
+        refetchQueries: ['GetBudgets'],
+        awaitRefetchQueries: true,
       });
 
       onBudgetUpdated();

@@ -54,6 +54,7 @@ export const GET_BUDGETS = gql`
       amount
       description
       currency
+      paid_by
       created_at
       activity {
         id
@@ -75,6 +76,7 @@ export const GET_BUDGETS_BY_DATE = gql`
       amount
       description
       currency
+      paid_by
       created_at
       activity {
         id
