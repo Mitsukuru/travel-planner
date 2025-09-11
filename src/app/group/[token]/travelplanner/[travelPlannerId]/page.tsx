@@ -208,6 +208,12 @@ export default function TravelPlanner() {
     }
   };
 
+  // 時間フォーマット関数（HH:MM:SS -> HH:MM）
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    return timeString.substring(0, 5); // HH:MM:SS から HH:MM を取得
+  };
+
   // おすすめ情報の取得（サンプル）
   const getRecommendations = (): Suggestion[] => {
     return [
@@ -302,19 +308,29 @@ export default function TravelPlanner() {
           <div className="px-4 pb-2">
             <div className="flex overflow-x-auto scrollbar-hide -mx-4 px-4">
               <div className="flex space-x-2 min-w-full">
-                {Array.from({ length: tripInfo.days }, (_, i) => (
-                  <button
-                    key={i}
-                    className={`flex-none px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedDay === i + 1
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setSelectedDay(i + 1)}
-                  >
-                    {i + 1}日目
-                  </button>
-                ))}
+                {Array.from({ length: tripInfo.days }, (_, i) => {
+                  const dayNumber = i + 1;
+                  const dayDate = new Date(startDate);
+                  dayDate.setDate(dayDate.getDate() + i);
+                  const formattedDate = dayDate.toLocaleDateString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric'
+                  });
+                  
+                  return (
+                    <button
+                      key={i}
+                      className={`flex-none px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedDay === dayNumber
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                      onClick={() => setSelectedDay(dayNumber)}
+                    >
+                      {dayNumber}日目 {formattedDate}日
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -349,19 +365,31 @@ export default function TravelPlanner() {
             <div className="p-4">
               <h2 className="font-semibold text-gray-700 mb-2">日程</h2>
               <div className="space-y-1">
-                {Array.from({ length: tripInfo.days }, (_, i) => (
-                  <button
-                    key={i}
-                    className={`w-full text-left px-3 py-2 rounded-md ${
-                      selectedDay === i + 1
-                        ? "bg-blue-100 text-blue-700"
-                        : "hover:bg-gray-100"
-                    }`}
-                    onClick={() => setSelectedDay(i + 1)}
-                  >
-                    {i + 1}日目
-                  </button>
-                ))}
+                {Array.from({ length: tripInfo.days }, (_, i) => {
+                  const dayNumber = i + 1;
+                  const dayDate = new Date(startDate);
+                  dayDate.setDate(dayDate.getDate() + i);
+                  const formattedDate = dayDate.toLocaleDateString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric'
+                  });
+                  
+                  return (
+                    <button
+                      key={i}
+                      className={`w-full text-left px-3 py-2 rounded-md ${
+                        selectedDay === dayNumber
+                          ? "bg-blue-100 text-blue-700"
+                          : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => setSelectedDay(dayNumber)}
+                    >
+                      <div className="font-medium">
+                        {dayNumber}日目 {formattedDate}日
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -418,12 +446,12 @@ export default function TravelPlanner() {
                       <div key={index} className="flex group">
                         {/* 時間列 */}
                         <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {activity.time}
+                          {formatTime(activity.time)}
                         </div>
 
                         {/* タイムラインの縦線 */}
                         <div className="relative flex flex-col items-center">
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
                           {index <
                             (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
                             1 && (

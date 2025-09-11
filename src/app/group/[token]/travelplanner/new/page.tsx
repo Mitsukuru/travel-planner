@@ -73,6 +73,12 @@ export default function TravelPlanner() {
 
   console.log(queryData);
 
+  // 時間フォーマット関数（HH:MM:SS -> HH:MM）
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    return timeString.substring(0, 5); // HH:MM:SS から HH:MM を取得
+  };
+
   // サンプルデータ
   const tripInfo: TripInfo = {
     destination: '京都',
@@ -226,12 +232,12 @@ export default function TravelPlanner() {
                     <div key={index} className="flex group">
                       {/* 時間列 */}
                       <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                        {activity.time}
+                        {formatTime(activity.time)}
                       </div>
                       
                       {/* タイムラインの縦線 */}
                       <div className="relative flex flex-col items-center">
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
                         {index < (itinerary.find(day => day.day === selectedDay)?.activities?.length ?? 0) - 1 && (
                           <div className="w-px bg-gray-300 h-full"></div>
                         )}
