@@ -328,9 +328,9 @@ export default function TravelPlanner() {
               <Image
                 src="/images/header_logo-removebg-preview.png"
                 alt="ヘッダー画像"
-                width={120}
-                height={100}
-                className="img-header h-12 w-auto sm:h-16"
+                width={80}
+                height={60}
+                className="img-header h-8 w-auto sm:h-10"
               />
             </Link>
           </div>
