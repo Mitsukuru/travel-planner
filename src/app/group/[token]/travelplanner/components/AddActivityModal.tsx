@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useMutation } from "@apollo/client";
 import { INSERT_ACTIVITIES } from "@/graphql/mutates";
-import { useJsApiLoader } from '@react-google-maps/api';
+// useJsApiLoaderを削除し、すでにロードされたGoogle Maps APIを使用
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -34,20 +34,15 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
-    libraries: ['places']
-  });
-
   useEffect(() => {
-    if (isLoaded && window.google) {
+    // Google Maps APIが利用可能になったら初期化
+    if (window.google && window.google.maps && window.google.maps.places) {
       autocompleteService.current = new window.google.maps.places.AutocompleteService();
       const mapDiv = document.createElement('div');
       const map = new window.google.maps.Map(mapDiv);
       placesService.current = new window.google.maps.places.PlacesService(map);
     }
-  }, [isLoaded]);
+  }, []);
 
   // defaultDateが変更されたら日付を更新
   useEffect(() => {
@@ -59,6 +54,14 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const handleLocationChange = (value: string) => {
     setLocation(value);
     setShowSuggestions(true);
+
+    // Google Maps APIがロードされていない場合は初期化を試行
+    if (!autocompleteService.current && window.google && window.google.maps && window.google.maps.places) {
+      autocompleteService.current = new window.google.maps.places.AutocompleteService();
+      const mapDiv = document.createElement('div');
+      const map = new window.google.maps.Map(mapDiv);
+      placesService.current = new window.google.maps.places.PlacesService(map);
+    }
 
     if (value.length > 2 && autocompleteService.current) {
       // 複数のタイプで検索して結果をマージ
