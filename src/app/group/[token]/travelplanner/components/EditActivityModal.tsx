@@ -1,13 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useMutation } from "@apollo/client";
 import { useJsApiLoader } from "@react-google-maps/api";
-import { INSERT_ACTIVITIES } from "@/graphql/mutates";
+import { UPDATE_ACTIVITY } from "@/graphql/mutates";
 
-interface AddActivityModalProps {
+interface EditActivityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  itinerary_id: number;
-  defaultDate?: string;
+  activity: {
+    id: number;
+    name: string;
+    location: string;
+    notes: string;
+    type: string;
+    date: Date;
+    time: string;
+    photo_url?: string;
+    lat?: number;
+    lng?: number;
+    place_id?: string;
+  } | null;
 }
 
 const typeOptions = [
@@ -19,8 +30,8 @@ const typeOptions = [
   { label: "エリア", value: "area" },
 ];
 
-const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, itinerary_id, defaultDate }) => {
-  const [date, setDate] = useState(defaultDate || "");
+const EditActivityModal: React.FC<EditActivityModalProps> = ({ isOpen, onClose, activity }) => {
+  const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [name, setName] = useState("");
@@ -33,7 +44,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const [lng, setLng] = useState<number | null>(null);
   const [placeId, setPlaceId] = useState("");
 
-  const [insertActivity] = useMutation(INSERT_ACTIVITIES);
+  const [updateActivity] = useMutation(UPDATE_ACTIVITY);
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
 
@@ -53,12 +64,22 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     }
   }, [isLoaded]);
 
-  // defaultDateが変更されたら日付を更新
+  // activityが変更されたらフォームを更新
   useEffect(() => {
-    if (defaultDate) {
-      setDate(defaultDate);
+    if (activity) {
+      const activityDate = new Date(activity.date);
+      setDate(activityDate.toISOString().split('T')[0]);
+      setTime(activity.time.substring(0, 5)); // HH:MM:SS から HH:MM を取得
+      setLocation(activity.location);
+      setName(activity.name);
+      setNotes(activity.notes || "");
+      setType(activity.type);
+      setPhotoUrl(activity.photo_url || "");
+      setLat(activity.lat || null);
+      setLng(activity.lng || null);
+      setPlaceId(activity.place_id || "");
     }
-  }, [defaultDate]);
+  }, [activity]);
 
   const handleLocationChange = (value: string) => {
     setLocation(value);
@@ -151,11 +172,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     setShowSuggestions(false);
     setPlaceId(suggestion.place_id);
 
-    // 名前が空の場合、選択した場所の名前を自動入力
-    if (!name && suggestion.structured_formatting.main_text) {
-      setName(suggestion.structured_formatting.main_text);
-    }
-
     // 場所の詳細情報と写真を取得
     if (placesService.current && suggestion.place_id) {
       placesService.current.getDetails(
@@ -184,41 +200,32 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activity) return;
+
     try {
-      await insertActivity({
+      await updateActivity({
         variables: {
-          itinerary_id,
-          date,
-          time,
-          location,
+          id: activity.id,
           name,
+          location,
           notes,
           type,
+          date,
+          time: time + ':00', // HH:MM to HH:MM:SS
           photo_url: photoUrl,
           lat,
           lng,
           place_id: placeId,
         },
       });
-      // フォームをリセット
-      setTime("");
-      setLocation("");
-      setName("");
-      setNotes("");
-      setType(typeOptions[0].value);
-      setSuggestions([]);
-      setShowSuggestions(false);
-      setPhotoUrl("");
-      setLat(null);
-      setLng(null);
-      setPlaceId("");
       onClose();
     } catch (e) {
       console.error(e);
+      alert('アクティビティの更新に失敗しました');
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !activity) return null;
 
   if (!isLoaded) {
     return (
@@ -239,14 +246,14 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
         >
           ×
         </button>
-        <h2 className="text-lg font-bold mb-4">アクティビティを追加</h2>
+        <h2 className="text-lg font-bold mb-4">アクティビティを編集</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">日付</label>
             <input
               type="date"
               className="w-full border rounded px-3 py-2"
-              value={date}
+              value={date || ""}
               onChange={e => setDate(e.target.value)}
               required
             />
@@ -256,7 +263,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             <input
               type="time"
               className="w-full border rounded px-3 py-2"
-              value={time}
+              value={time || ""}
               onChange={e => setTime(e.target.value)}
               required
             />
@@ -266,7 +273,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             <input
               type="text"
               className="w-full border rounded px-3 py-2"
-              value={location}
+              value={location || ""}
               onChange={e => handleLocationChange(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -319,7 +326,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             <input
               type="text"
               className="w-full border rounded px-3 py-2"
-              value={name}
+              value={name || ""}
               onChange={e => setName(e.target.value)}
               required
             />
@@ -328,7 +335,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             <label className="block text-sm font-medium mb-1">説明</label>
             <textarea
               className="w-full border rounded px-3 py-2"
-              value={notes}
+              value={notes || ""}
               onChange={e => setNotes(e.target.value)}
               rows={2}
             />
@@ -337,7 +344,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             <label className="block text-sm font-medium mb-1">タイプ</label>
             <select
               className="w-full border rounded px-3 py-2"
-              value={type}
+              value={type || typeOptions[0].value}
               onChange={e => setType(e.target.value)}
               required
             >
@@ -360,7 +367,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
               type="submit"
               className="px-4 py-2 rounded bg-blue-600 text-white font-bold"
             >
-              保存
+              更新
             </button>
           </div>
         </form>
@@ -369,4 +376,4 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   );
 };
 
-export default AddActivityModal; 
+export default EditActivityModal;

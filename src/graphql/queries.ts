@@ -40,6 +40,9 @@ query activities {
 		date
 		time
 		photo_url
+		lat
+		lng
+		place_id
   }
 }
 `;

@@ -10,6 +10,9 @@ export const INSERT_ACTIVITIES = gql`
     $date: date
     $time: time
     $photo_url: String
+    $lat: numeric
+    $lng: numeric
+    $place_id: String
   ) {
     insert_activities(
       objects: {
@@ -21,6 +24,9 @@ export const INSERT_ACTIVITIES = gql`
         date: $date
         time: $time
         photo_url: $photo_url
+        lat: $lat
+        lng: $lng
+        place_id: $place_id
       }
     ) {
       affected_rows
@@ -34,6 +40,9 @@ export const INSERT_ACTIVITIES = gql`
         date
         time
         photo_url
+        lat
+        lng
+        place_id
       }
     }
   }
@@ -121,15 +130,29 @@ export const UPDATE_ACTIVITY = gql`
   mutation UpdateActivity(
     $id: Int!
     $name: String!
+    $location: String!
     $notes: String
+    $type: String!
+    $date: date!
     $time: time!
+    $photo_url: String
+    $lat: numeric
+    $lng: numeric
+    $place_id: String
   ) {
     update_activities_by_pk(
       pk_columns: { id: $id }
       _set: {
         name: $name
+        location: $location
         notes: $notes
+        type: $type
+        date: $date
         time: $time
+        photo_url: $photo_url
+        lat: $lat
+        lng: $lng
+        place_id: $place_id
       }
     ) {
       id
@@ -140,6 +163,10 @@ export const UPDATE_ACTIVITY = gql`
       type
       date
       time
+      photo_url
+      lat
+      lng
+      place_id
     }
   }
 `;

@@ -30,6 +30,7 @@ import {
   Filter,
 } from "lucide-react";
 import AddActivityModal from "../components/AddActivityModal";
+import EditActivityModal from "../components/EditActivityModal";
 
 interface TripInfo {
   destination: string;
@@ -44,9 +45,13 @@ interface Activity {
   time: string;
   type: string;
   name: string;
+  location: string;
   notes?: string;
   date:  Date;
   photo_url?: string;
+  lat?: number;
+  lng?: number;
+  place_id?: string;
 }
 
 interface DayPlan {
@@ -82,8 +87,8 @@ export default function TravelPlanner() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [localActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<{time: string, name: string, notes: string}>({time: '', name: '', notes: ''});
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
   
 
@@ -224,54 +229,9 @@ export default function TravelPlanner() {
   };
 
   // 編集開始
-  const startEditActivity = (index: number, activity: Activity) => {
-    setEditingActivity(index);
-    setEditForm({
-      time: formatTime(activity.time),
-      name: activity.name,
-      notes: activity.notes || ''
-    });
-  };
-
-  // 編集保存
-  const saveActivityEdit = async () => {
-    try {
-      const selectedDayActivities = activities.find((day) => day.day === selectedDay)?.activities || [];
-      const currentActivity = selectedDayActivities.concat(
-        localActivities.filter(a => day(a.date) === selectedDay)
-      )
-      .sort((a, b) => {
-        const timeA = a.time.split(':').map(Number);
-        const timeB = b.time.split(':').map(Number);
-        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
-      })[editingActivity!];
-
-      if (currentActivity?.id) {
-        await updateActivity({
-          variables: {
-            id: currentActivity.id,
-            name: editForm.name,
-            notes: editForm.notes,
-            time: editForm.time + ':00' // HH:MM to HH:MM:SS
-          }
-        });
-
-        // データを再取得
-        await refetchActivities();
-
-        setEditingActivity(null);
-        setEditForm({time: '', name: '', notes: ''});
-      }
-    } catch (error) {
-      console.error('Error updating activity:', error);
-      alert('アクティビティの更新に失敗しました');
-    }
-  };
-
-  // 編集キャンセル
-  const cancelActivityEdit = () => {
-    setEditingActivity(null);
-    setEditForm({time: '', name: '', notes: ''});
+  const startEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    setEditModalOpen(true);
   };
 
   // アクティビティ削除
@@ -551,7 +511,7 @@ export default function TravelPlanner() {
                         {/* 内容 */}
                         <div className="ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
                           {/* 背景画像 */}
-                          {activity.photo_url && editingActivity !== index && (
+                          {activity.photo_url && (
                             <div className="absolute inset-0 flex">
                               <div className="flex-1"></div>
                               <div className="w-1/2 h-full relative">
@@ -569,45 +529,6 @@ export default function TravelPlanner() {
                             </div>
                           )}
                           <div className="relative z-10 p-4">
-                          {editingActivity === index ? (
-                            <div className="space-y-3">
-                              <div className="flex items-start">
-                                <div className="mr-3 pt-1">
-                                  {getActivityIcon(activity.type)}
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                  <input
-                                    type="text"
-                                    value={editForm.name}
-                                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                                    className="w-full font-medium text-gray-800 border border-gray-300 rounded px-2 py-1"
-                                    placeholder="アクティビティ名"
-                                  />
-                                  <textarea
-                                    value={editForm.notes}
-                                    onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
-                                    className="w-full text-gray-600 text-sm border border-gray-300 rounded px-2 py-1 resize-none"
-                                    rows={2}
-                                    placeholder="メモ"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex justify-end space-x-2">
-                                <button
-                                  onClick={cancelActivityEdit}
-                                  className="px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                                >
-                                  キャンセル
-                                </button>
-                                <button
-                                  onClick={saveActivityEdit}
-                                  className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
-                                >
-                                  保存
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
                             <div className="flex justify-between items-center">
                               <div className="flex items-start flex-1">
                                 <div className="mr-3">
@@ -624,7 +545,7 @@ export default function TravelPlanner() {
                               </div>
                               <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                  onClick={() => startEditActivity(index, activity)}
+                                  onClick={() => startEditActivity(activity)}
                                   className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
                                   title="編集"
                                 >
@@ -643,7 +564,6 @@ export default function TravelPlanner() {
                                 </button>
                               </div>
                             </div>
-                          )}
                           </div>
                         </div>
                       </div>
@@ -884,6 +804,15 @@ export default function TravelPlanner() {
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
         defaultDate={selectedDateForModal || travelPlan.start_date}
+      />
+      <EditActivityModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingActivity(null);
+          refetchActivities(); // データを再取得
+        }}
+        activity={editingActivity}
       />
     </div>
   );

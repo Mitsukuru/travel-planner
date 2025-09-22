@@ -1,14 +1,21 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@apollo/client';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GET_ACTIVITIES } from '@/graphql/queries';
 
-interface Place {
+interface Activity {
   id: number;
   name: string;
-  lat: number;
-  lng: number;
-  details: string;
+  location: string;
+  lat?: number;
+  lng?: number;
+  type: string;
+  date: string;
+  time: string;
+  notes?: string;
+  photo_url?: string;
 }
 
 const containerStyle = {
@@ -16,38 +23,42 @@ const containerStyle = {
   height: '100%'
 };
 
-const center = {
+const defaultCenter = {
   lat: 35.6762, // 東京の緯度
   lng: 139.6503 // 東京の経度
 };
 
-// サンプルデータ（実際のデータに置き換えてください）
-const sampleLocations = [
-  {
-    day: 1,
-    places: [
-      {
-        id: 1,
-        name: '東京スカイツリー',
-        lat: 35.7100,
-        lng: 139.8107,
-        details: '高さ634mの電波塔。展望台からの眺めが素晴らしい。'
-      },
-      {
-        id: 2,
-        name: '浅草寺',
-        lat: 35.7147,
-        lng: 139.7966,
-        details: '東京都内最古の寺院。雷門と仲見世通りが有名。'
-      }
-    ]
-  },
-  // 他の日のデータも同様に追加できます
-];
-
 const MapPage = () => {
-  const [selectedDay] = useState(1);
-  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
+
+  const { data: activitiesData, loading, error } = useQuery(GET_ACTIVITIES);
+
+  // アクティビティデータを日付別に整理
+  useEffect(() => {
+    if (activitiesData?.activities) {
+      const grouped: {[key: number]: Activity[]} = {};
+
+      activitiesData.activities.forEach((activity: Activity) => {
+        // 日付から日数を計算（簡単のため、最初の日から何日目かを計算）
+        const activityDate = new Date(activity.date);
+        const firstDate = new Date(Math.min(...activitiesData.activities.map((a: Activity) => new Date(a.date).getTime())));
+        const dayNumber = Math.floor((activityDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        if (!grouped[dayNumber]) {
+          grouped[dayNumber] = [];
+        }
+
+        // 緯度・経度がある場合のみ追加
+        if (activity.lat && activity.lng) {
+          grouped[dayNumber].push(activity);
+        }
+      });
+
+      setActivitiesByDay(grouped);
+    }
+  }, [activitiesData]);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -59,43 +70,114 @@ const MapPage = () => {
     // マップの初期設定をここで行えます
   }, []);
 
-  const handleMarkerClick = (place: Place) => {
-    setSelectedPlace(place);
+  const handleMarkerClick = (activity: Activity) => {
+    setSelectedActivity(activity);
   };
+
+  // 選択された日のアクティビティの中心座標を計算
+  const getMapCenter = () => {
+    const dayActivities = activitiesByDay[selectedDay];
+    if (!dayActivities || dayActivities.length === 0) {
+      return defaultCenter;
+    }
+
+    const avgLat = dayActivities.reduce((sum, activity) => sum + (activity.lat || 0), 0) / dayActivities.length;
+    const avgLng = dayActivities.reduce((sum, activity) => sum + (activity.lng || 0), 0) / dayActivities.length;
+
+    return { lat: avgLat, lng: avgLng };
+  };
+
+  // アクティビティタイプに基づくマーカーの色を取得
+  const getMarkerIcon = (type: string) => {
+    const icons: {[key: string]: string} = {
+      'transport': '#3B82F6', // 青
+      'sightseeing': '#10B981', // 緑
+      'restaurant': '#F59E0B', // オレンジ
+      'hotel': '#8B5CF6', // 紫
+      'activity': '#EF4444', // 赤
+      'area': '#6B7280', // グレー
+    };
+
+    return {
+      path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+      fillColor: icons[type] || '#6B7280',
+      fillOpacity: 1,
+      stroke: '#FFFFFF',
+      strokeWeight: 2,
+      scale: 8,
+    };
+  };
+
+  if (loading) return <div>Loading activities...</div>;
+  if (error) return <div>Error loading activities: {error.message}</div>;
+
+  const availableDays = Object.keys(activitiesByDay).map(Number).sort((a, b) => a - b);
 
   return (
     <div className="w-full h-screen">
-      <div className="w-full h-[calc(100vh-4rem)]">
+      {/* 日付選択 */}
+      <div className="bg-white p-4 shadow-sm border-b">
+        <div className="flex gap-2 overflow-x-auto">
+          {availableDays.map(day => (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`px-4 py-2 rounded-full whitespace-nowrap ${
+                selectedDay === day
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Day {day} ({activitiesByDay[day]?.length || 0} places)
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* マップ */}
+      <div className="w-full h-[calc(100vh-8rem)]">
         {isLoaded ? (
           <GoogleMap
             mapContainerStyle={containerStyle}
-            center={center}
+            center={getMapCenter()}
             zoom={13}
             onLoad={onLoad}
           >
-            {sampleLocations
-              .find(location => location.day === selectedDay)
-              ?.places.map(place => (
-                <Marker
-                  key={place.id}
-                  position={{ lat: place.lat, lng: place.lng }}
-                  onClick={() => handleMarkerClick(place)}
-                />
-              ))}
-            
-            {selectedPlace && (
+            {activitiesByDay[selectedDay]?.map(activity => (
+              <Marker
+                key={activity.id}
+                position={{ lat: activity.lat!, lng: activity.lng! }}
+                onClick={() => handleMarkerClick(activity)}
+                title={activity.name}
+                icon={getMarkerIcon(activity.type)}
+              />
+            ))}
+
+            {selectedActivity && (
               <InfoWindow
-                position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}
-                onCloseClick={() => setSelectedPlace(null)}
+                position={{ lat: selectedActivity.lat!, lng: selectedActivity.lng! }}
+                onCloseClick={() => setSelectedActivity(null)}
               >
-                <div>
-                  <h3 className="font-bold">{selectedPlace.name}</h3>
-                  <p>{selectedPlace.details}</p>
+                <div className="max-w-xs">
+                  <h3 className="font-bold text-lg">{selectedActivity.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{selectedActivity.location}</p>
+                  <p className="text-sm"><span className="font-medium">Time:</span> {selectedActivity.time}</p>
+                  <p className="text-sm"><span className="font-medium">Type:</span> {selectedActivity.type}</p>
+                  {selectedActivity.notes && (
+                    <p className="text-sm mt-2">{selectedActivity.notes}</p>
+                  )}
+                  {selectedActivity.photo_url && (
+                    <img
+                      src={selectedActivity.photo_url}
+                      alt={selectedActivity.name}
+                      className="w-full h-32 object-cover rounded mt-2"
+                    />
+                  )}
                 </div>
               </InfoWindow>
             )}
           </GoogleMap>
-        ) : <div>Loading...</div>}
+        ) : <div>Loading map...</div>}
       </div>
     </div>
   );
