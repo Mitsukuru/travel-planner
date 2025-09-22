@@ -28,6 +28,8 @@ import {
   Tag,
   Search,
   Filter,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import AddActivityModal from "../components/AddActivityModal";
 import EditActivityModal from "../components/EditActivityModal";
@@ -90,6 +92,12 @@ export default function TravelPlanner() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
+  const [participants, setParticipants] = useState(["まさあき", "たまよ", "こうすけ", "るり"]);
+  const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState("");
+  const [isEditParticipantModalOpen, setIsEditParticipantModalOpen] = useState(false);
+  const [editingParticipantIndex, setEditingParticipantIndex] = useState<number | null>(null);
+  const [editingParticipantName, setEditingParticipantName] = useState("");
   
 
   if (loading) {
@@ -149,7 +157,7 @@ export default function TravelPlanner() {
     destination: travelPlan.destination,
     startDate: travelPlan.start_date,
     endDate: travelPlan.end_date,
-    participants: ["まさあき", "たまよ", "こうすけ", "るり"],
+    participants: participants,
     days: termDay,
   };
 
@@ -260,6 +268,39 @@ export default function TravelPlanner() {
     } catch (error) {
       console.error('Error deleting activity:', error);
       alert('アクティビティの削除に失敗しました');
+    }
+  };
+
+  // 参加者追加の処理
+  const handleAddParticipant = () => {
+    if (newParticipantName.trim()) {
+      setParticipants([...participants, newParticipantName.trim()]);
+      setNewParticipantName("");
+      setIsAddParticipantModalOpen(false);
+    }
+  };
+
+  // 参加者削除の処理
+  const handleRemoveParticipant = (index: number) => {
+    setParticipants(participants.filter((_, i) => i !== index));
+  };
+
+  // 参加者編集開始の処理
+  const handleEditParticipant = (index: number) => {
+    setEditingParticipantIndex(index);
+    setEditingParticipantName(participants[index]);
+    setIsEditParticipantModalOpen(true);
+  };
+
+  // 参加者編集完了の処理
+  const handleUpdateParticipant = () => {
+    if (editingParticipantName.trim() && editingParticipantIndex !== null) {
+      const updatedParticipants = [...participants];
+      updatedParticipants[editingParticipantIndex] = editingParticipantName.trim();
+      setParticipants(updatedParticipants);
+      setEditingParticipantName("");
+      setEditingParticipantIndex(null);
+      setIsEditParticipantModalOpen(false);
     }
   };
 
@@ -390,12 +431,33 @@ export default function TravelPlanner() {
                   <h3 className="font-semibold text-gray-700 mb-2">参加者</h3>
                   <div className="space-y-2">
                     {tripInfo.participants.map((person, index) => (
-                      <div key={index} className="flex items-center text-sm text-gray-600">
-                        <Users className="w-4 h-4 mr-2" />
-                        {person}
+                      <div key={index} className="group flex items-center justify-between text-sm text-gray-600 hover:bg-gray-50 rounded px-2 py-1 transition-colors">
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-2" />
+                          {person}
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
+                          <button
+                            onClick={() => handleEditParticipant(index)}
+                            className="text-blue-500 hover:text-blue-700 p-1"
+                            title="編集"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveParticipant(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="削除"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
-                    <button className="text-blue-600 text-sm flex items-center mt-2">
+                    <button
+                      onClick={() => setIsAddParticipantModalOpen(true)}
+                      className="text-blue-600 text-sm flex items-center mt-2 hover:text-blue-800"
+                    >
                       + 参加者を追加
                     </button>
                   </div>
@@ -445,20 +507,41 @@ export default function TravelPlanner() {
                 {tripInfo.participants.map((person, index) => (
                   <div
                     key={index}
-                    className="flex items-center text-sm text-gray-600"
+                    className="group flex items-center justify-between text-sm text-gray-600 hover:bg-gray-50 rounded px-2 py-1 transition-colors"
                   >
-                    <Users className="w-4 h-4 mr-2" />
-                    {person}
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 mr-2" />
+                      {person}
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
+                      <button
+                        onClick={() => handleEditParticipant(index)}
+                        className="text-blue-500 hover:text-blue-700 p-1"
+                        title="編集"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveParticipant(index)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="削除"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
-                <button className="text-blue-600 text-sm flex items-center mt-2">
+                <button
+                  onClick={() => setIsAddParticipantModalOpen(true)}
+                  className="text-blue-600 text-sm flex items-center mt-2 hover:text-blue-800"
+                >
                   + 参加者を追加
                 </button>
               </div>
             </div>
           </div>
           {activeTab === "map" ? (
-            <MapPage />
+            <MapPage selectedDay={selectedDay} />
           ) : activeTab === "budget" ? (
             <BudgetPage selectedDay={selectedDay} />
           ) : (
@@ -814,6 +897,110 @@ export default function TravelPlanner() {
         }}
         activity={editingActivity}
       />
+
+      {/* 参加者追加モーダル */}
+      {isAddParticipantModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: '#0000004d' }}>
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-2 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => setIsAddParticipantModalOpen(false)}
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold mb-4">参加者を追加</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">参加者名</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={newParticipantName}
+                  onChange={(e) => setNewParticipantName(e.target.value)}
+                  placeholder="参加者の名前を入力してください"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddParticipant();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  onClick={() => setIsAddParticipantModalOpen(false)}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-blue-600 text-white font-bold hover:bg-blue-700"
+                  onClick={handleAddParticipant}
+                >
+                  追加
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 参加者編集モーダル */}
+      {isEditParticipantModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: '#0000004d' }}>
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-2 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setIsEditParticipantModalOpen(false);
+                setEditingParticipantName("");
+                setEditingParticipantIndex(null);
+              }}
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold mb-4">参加者名を編集</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">参加者名</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={editingParticipantName}
+                  onChange={(e) => setEditingParticipantName(e.target.value)}
+                  placeholder="参加者の名前を入力してください"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleUpdateParticipant();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  onClick={() => {
+                    setIsEditParticipantModalOpen(false);
+                    setEditingParticipantName("");
+                    setEditingParticipantIndex(null);
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-blue-600 text-white font-bold hover:bg-blue-700"
+                  onClick={handleUpdateParticipant}
+                >
+                  更新
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

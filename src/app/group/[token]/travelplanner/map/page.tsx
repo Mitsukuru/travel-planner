@@ -28,8 +28,11 @@ const defaultCenter = {
   lng: 139.6503 // 東京の経度
 };
 
-const MapPage = () => {
-  const [selectedDay, setSelectedDay] = useState(1);
+interface MapPageProps {
+  selectedDay?: number;
+}
+
+const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
 
@@ -111,31 +114,10 @@ const MapPage = () => {
   if (loading) return <div>Loading activities...</div>;
   if (error) return <div>Error loading activities: {error.message}</div>;
 
-  const availableDays = Object.keys(activitiesByDay).map(Number).sort((a, b) => a - b);
-
   return (
     <div className="w-full h-screen">
-      {/* 日付選択 */}
-      <div className="bg-white p-4 shadow-sm border-b">
-        <div className="flex gap-2 overflow-x-auto">
-          {availableDays.map(day => (
-            <button
-              key={day}
-              onClick={() => setSelectedDay(day)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                selectedDay === day
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Day {day} ({activitiesByDay[day]?.length || 0} places)
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* マップ */}
-      <div className="w-full h-[calc(100vh-8rem)]">
+      <div className="w-full h-full">
         {isLoaded ? (
           <GoogleMap
             mapContainerStyle={containerStyle}
