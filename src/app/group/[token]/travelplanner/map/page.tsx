@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, OverlayView } from '@react-google-maps/api';
 import { GET_ACTIVITIES } from '@/graphql/queries';
 
 interface Activity {
@@ -19,7 +19,7 @@ interface Activity {
 }
 
 const containerStyle = {
-  width: 'auto',
+  width: '100%',
   height: '100%'
 };
 
@@ -111,11 +111,24 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
     };
   };
 
+  // アクティビティタイプの日本語表示
+  const getTypeLabel = (type: string) => {
+    const typeLabels: {[key: string]: string} = {
+      'transport': '交通',
+      'sightseeing': '観光スポット',
+      'restaurant': '飲食店',
+      'hotel': 'ホテル',
+      'activity': 'アクティビティ',
+      'area': 'エリア',
+    };
+    return typeLabels[type] || type;
+  };
+
   if (loading) return <div>Loading activities...</div>;
   if (error) return <div>Error loading activities: {error.message}</div>;
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full h-full">
       {/* マップ */}
       <div className="w-full h-full">
         {isLoaded ? (
@@ -136,27 +149,52 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
             ))}
 
             {selectedActivity && (
-              <InfoWindow
+              <OverlayView
                 position={{ lat: selectedActivity.lat!, lng: selectedActivity.lng! }}
-                onCloseClick={() => setSelectedActivity(null)}
+                mapPaneName='overlayMouseTarget'
               >
-                <div className="max-w-xs">
-                  <h3 className="font-bold text-lg">{selectedActivity.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{selectedActivity.location}</p>
-                  <p className="text-sm"><span className="font-medium">Time:</span> {selectedActivity.time}</p>
-                  <p className="text-sm"><span className="font-medium">Type:</span> {selectedActivity.type}</p>
-                  {selectedActivity.notes && (
-                    <p className="text-sm mt-2">{selectedActivity.notes}</p>
-                  )}
-                  {selectedActivity.photo_url && (
-                    <img
-                      src={selectedActivity.photo_url}
-                      alt={selectedActivity.name}
-                      className="w-full h-32 object-cover rounded mt-2"
-                    />
-                  )}
+                <div className="relative bg-white rounded-lg shadow-lg border border-gray-200 max-w-xs min-w-64 transform -translate-x-1/2 -translate-y-full mb-2">
+                  {/* 閉じるボタン */}
+                  <button
+                    onClick={() => setSelectedActivity(null)}
+                    className="absolute top-2 right-2 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 text-sm z-10"
+                  >
+                    ×
+                  </button>
+
+                  {/* コンテンツ */}
+                  <div className="p-4">
+                    <h3 className="font-bold text-lg pr-8 mb-2">{selectedActivity.name}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{selectedActivity.location}</p>
+
+                    <div className="space-y-1 mb-3">
+                      <p className="text-sm">
+                        <span className="font-medium">時間:</span> {selectedActivity.time}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">タイプ:</span> {getTypeLabel(selectedActivity.type)}
+                      </p>
+                    </div>
+
+                    {selectedActivity.notes && (
+                      <p className="text-sm text-gray-700 mb-3">{selectedActivity.notes}</p>
+                    )}
+
+                    {selectedActivity.photo_url && (
+                      <img
+                        src={selectedActivity.photo_url}
+                        alt={selectedActivity.name}
+                        className="w-full h-32 object-cover rounded"
+                      />
+                    )}
+                  </div>
+
+                  {/* 吹き出しの三角形 */}
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+                    <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white filter drop-shadow-sm"></div>
+                  </div>
                 </div>
-              </InfoWindow>
+              </OverlayView>
             )}
           </GoogleMap>
         ) : <div>Loading map...</div>}

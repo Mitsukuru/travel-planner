@@ -541,7 +541,9 @@ export default function TravelPlanner() {
             </div>
           </div>
           {activeTab === "map" ? (
-            <MapPage selectedDay={selectedDay} />
+            <div className="flex-1 w-full h-full">
+              <MapPage selectedDay={selectedDay} />
+            </div>
           ) : activeTab === "budget" ? (
             <BudgetPage selectedDay={selectedDay} />
           ) : (
