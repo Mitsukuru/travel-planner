@@ -84,6 +84,7 @@ export default function TravelPlanner() {
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{time: string, name: string, notes: string}>({time: '', name: '', notes: ''});
+  const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
   
 
   if (loading) {
@@ -656,7 +657,14 @@ export default function TravelPlanner() {
                       </div>
                       <button
                         className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => setAddModalOpen(true)}
+                        onClick={() => {
+                          // 現在選択されている日の実際の日付を計算
+                          const selectedDate = new Date(startDate);
+                          selectedDate.setDate(selectedDate.getDate() + (selectedDay - 1));
+                          const formattedSelectedDate = selectedDate.toISOString().split('T')[0];
+                          setSelectedDateForModal(formattedSelectedDate);
+                          setAddModalOpen(true);
+                        }}
                       >
                         <span className="text-blue-600">
                           + アクティビティを追加
@@ -875,7 +883,7 @@ export default function TravelPlanner() {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
-        defaultDate={travelPlan.start_date}
+        defaultDate={selectedDateForModal || travelPlan.start_date}
       />
     </div>
   );

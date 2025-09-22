@@ -49,6 +49,13 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     }
   }, [isLoaded]);
 
+  // defaultDateが変更されたら日付を更新
+  useEffect(() => {
+    if (defaultDate) {
+      setDate(defaultDate);
+    }
+  }, [defaultDate]);
+
   const handleLocationChange = (value: string) => {
     setLocation(value);
     setShowSuggestions(true);
@@ -171,8 +178,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
           photo_url: photoUrl,
         },
       });
-      onClose();
-      setDate(defaultDate || "");
+      // フォームをリセット
       setTime("");
       setLocation("");
       setName("");
@@ -181,6 +187,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       setSuggestions([]);
       setShowSuggestions(false);
       setPhotoUrl("");
+      onClose();
     } catch (e) {
       console.error(e);
     }
