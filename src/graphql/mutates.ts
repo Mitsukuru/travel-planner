@@ -113,3 +113,38 @@ export const DELETE_BUDGET = gql`
     }
   }
 `;
+
+export const UPDATE_ACTIVITY = gql`
+  mutation UpdateActivity(
+    $id: Int!
+    $name: String!
+    $notes: String
+    $time: time!
+  ) {
+    update_activities_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        name: $name
+        notes: $notes
+        time: $time
+      }
+    ) {
+      id
+      itinerary_id
+      name
+      location
+      notes
+      type
+      date
+      time
+    }
+  }
+`;
+
+export const DELETE_ACTIVITY = gql`
+  mutation DeleteActivity($id: Int!) {
+    delete_activities_by_pk(id: $id) {
+      id
+    }
+  }
+`;

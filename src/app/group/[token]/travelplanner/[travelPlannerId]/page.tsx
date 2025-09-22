@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import Link from "next/link";
 import Image from "next/image";
 import MapPage from "../map/page";
 import BudgetPage from "../budget/page";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
+import { UPDATE_ACTIVITY, DELETE_ACTIVITY } from "@/graphql/mutates";
 import {
   MapPin,
   ThumbsUp,
@@ -39,6 +40,7 @@ interface TripInfo {
 }
 
 interface Activity {
+  id?: number;
   time: string;
   type: string;
   name: string;
@@ -66,11 +68,12 @@ interface Suggestion {
 
 export default function TravelPlanner() {
   const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES);
-  const { data: activitiesData } = useQuery(GET_ACTIVITIES);
+  const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES);
+  const [updateActivity] = useMutation(UPDATE_ACTIVITY);
+  const [deleteActivity] = useMutation(DELETE_ACTIVITY);
 
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
-  const [editMode, setEditMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recommendationType, setRecommendationType] = useState("nearby");
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,6 +81,8 @@ export default function TravelPlanner() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [localActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{time: string, name: string, notes: string}>({time: '', name: '', notes: ''});
   
 
   if (loading) {
@@ -176,6 +181,7 @@ export default function TravelPlanner() {
       const d = day(activity.date);
       if (groupedActivities[d - 1]) {
         groupedActivities[d - 1].activities.push({
+          id: activity.id,
           time: activity.time,
           type: activity.type,
           name: activity.name,
@@ -212,6 +218,86 @@ export default function TravelPlanner() {
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
     return timeString.substring(0, 5); // HH:MM:SS から HH:MM を取得
+  };
+
+  // 編集開始
+  const startEditActivity = (index: number, activity: Activity) => {
+    setEditingActivity(index);
+    setEditForm({
+      time: formatTime(activity.time),
+      name: activity.name,
+      notes: activity.notes || ''
+    });
+  };
+
+  // 編集保存
+  const saveActivityEdit = async () => {
+    try {
+      const selectedDayActivities = activities.find((day) => day.day === selectedDay)?.activities || [];
+      const currentActivity = selectedDayActivities.concat(
+        localActivities.filter(a => day(a.date) === selectedDay)
+      )
+      .sort((a, b) => {
+        const timeA = a.time.split(':').map(Number);
+        const timeB = b.time.split(':').map(Number);
+        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+      })[editingActivity!];
+
+      if (currentActivity?.id) {
+        await updateActivity({
+          variables: {
+            id: currentActivity.id,
+            name: editForm.name,
+            notes: editForm.notes,
+            time: editForm.time + ':00' // HH:MM to HH:MM:SS
+          }
+        });
+
+        // データを再取得
+        await refetchActivities();
+
+        setEditingActivity(null);
+        setEditForm({time: '', name: '', notes: ''});
+      }
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      alert('アクティビティの更新に失敗しました');
+    }
+  };
+
+  // 編集キャンセル
+  const cancelActivityEdit = () => {
+    setEditingActivity(null);
+    setEditForm({time: '', name: '', notes: ''});
+  };
+
+  // アクティビティ削除
+  const handleDeleteActivity = async (index: number) => {
+    try {
+      const selectedDayActivities = activities.find((day) => day.day === selectedDay)?.activities || [];
+      const currentActivity = selectedDayActivities.concat(
+        localActivities.filter(a => day(a.date) === selectedDay)
+      )
+      .sort((a, b) => {
+        const timeA = a.time.split(':').map(Number);
+        const timeB = b.time.split(':').map(Number);
+        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+      })[index];
+
+      if (currentActivity?.id && confirm('このアクティビティを削除しますか？')) {
+        await deleteActivity({
+          variables: {
+            id: currentActivity.id
+          }
+        });
+
+        // データを再取得
+        await refetchActivities();
+      }
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      alert('アクティビティの削除に失敗しました');
+    }
   };
 
   // おすすめ情報の取得（サンプル）
@@ -421,12 +507,6 @@ export default function TravelPlanner() {
                     <h2 className="text-xl font-bold text-gray-800 hidden lg:block">
                       {selectedDay}日目
                     </h2>
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1.5 lg:px-4 lg:py-2 rounded-md text-sm lg:text-base"
-                      onClick={() => setEditMode(!editMode)}
-                    >
-                      {editMode ? "完了" : "編集"}
-                    </button>
                   </div>
 
                   {/* タイムライン */}
@@ -443,7 +523,16 @@ export default function TravelPlanner() {
                       <div key={index} className="flex group">
                         {/* 時間列 */}
                         <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {formatTime(activity.time)}
+                          {editingActivity === index ? (
+                            <input
+                              type="time"
+                              value={editForm.time}
+                              onChange={(e) => setEditForm({...editForm, time: e.target.value})}
+                              className="w-full text-sm border border-gray-300 rounded px-1 py-1"
+                            />
+                          ) : (
+                            formatTime(activity.time)
+                          )}
                         </div>
 
                         {/* タイムラインの縦線 */}
@@ -458,41 +547,81 @@ export default function TravelPlanner() {
 
                         {/* 内容 */}
                         <div className="ml-4 bg-white rounded-lg border border-gray-200 p-4 flex-1 shadow-sm group-hover:shadow">
-                          <div className="flex justify-between">
-                            <div className="flex items-start">
-                              <div className="mr-3">
-                                {getActivityIcon(activity.type)}
+                          {editingActivity === index ? (
+                            <div className="space-y-3">
+                              <div className="flex items-start">
+                                <div className="mr-3 pt-1">
+                                  {getActivityIcon(activity.type)}
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                  <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                                    className="w-full font-medium text-gray-800 border border-gray-300 rounded px-2 py-1"
+                                    placeholder="アクティビティ名"
+                                  />
+                                  <textarea
+                                    value={editForm.notes}
+                                    onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                                    className="w-full text-gray-600 text-sm border border-gray-300 rounded px-2 py-1 resize-none"
+                                    rows={2}
+                                    placeholder="メモ"
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <h3 className="font-medium text-gray-800">
-                                  {activity.name}
-                                </h3>
-                                <p className="text-gray-600 text-sm mt-1">
-                                  {activity.notes}
-                                </p>
+                              <div className="flex justify-end space-x-2">
+                                <button
+                                  onClick={cancelActivityEdit}
+                                  className="px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                                >
+                                  キャンセル
+                                </button>
+                                <button
+                                  onClick={saveActivityEdit}
+                                  className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+                                >
+                                  保存
+                                </button>
                               </div>
                             </div>
-                            {editMode && (
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 9l-7 7-7-7"
-                                    />
+                          ) : (
+                            <div className="flex justify-between">
+                              <div className="flex items-start">
+                                <div className="mr-3">
+                                  {getActivityIcon(activity.type)}
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-gray-800">
+                                    {activity.name}
+                                  </h3>
+                                  <p className="text-gray-600 text-sm mt-1">
+                                    {activity.notes}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => startEditActivity(index, activity)}
+                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                  title="編集"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteActivity(index)}
+                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                  title="削除"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
                                 </button>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
