@@ -28,6 +28,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const [type, setType] = useState(typeOptions[0].value);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState("");
 
   const [insertActivity] = useMutation(INSERT_ACTIVITIES);
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
@@ -134,6 +135,25 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     if (!name && suggestion.structured_formatting.main_text) {
       setName(suggestion.structured_formatting.main_text);
     }
+
+    // 場所の詳細情報と写真を取得
+    if (placesService.current && suggestion.place_id) {
+      placesService.current.getDetails(
+        {
+          placeId: suggestion.place_id,
+          fields: ['photos', 'name', 'formatted_address']
+        },
+        (place, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+            if (place.photos && place.photos.length > 0) {
+              // 最初の写真のURLを取得（幅400pxで）
+              const photoUrl = place.photos[0].getUrl({ maxWidth: 400 });
+              setPhotoUrl(photoUrl);
+            }
+          }
+        }
+      );
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,6 +168,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
           name,
           notes,
           type,
+          photo_url: photoUrl,
         },
       });
       onClose();
@@ -159,6 +180,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       setType(typeOptions[0].value);
       setSuggestions([]);
       setShowSuggestions(false);
+      setPhotoUrl("");
     } catch (e) {
       console.error(e);
     }

@@ -9,6 +9,7 @@ export const INSERT_ACTIVITIES = gql`
     $type: String
     $date: date
     $time: time
+    $photo_url: String
   ) {
     insert_activities(
       objects: {
@@ -19,6 +20,7 @@ export const INSERT_ACTIVITIES = gql`
         type: $type
         date: $date
         time: $time
+        photo_url: $photo_url
       }
     ) {
       affected_rows
@@ -31,6 +33,7 @@ export const INSERT_ACTIVITIES = gql`
         type
         date
         time
+        photo_url
       }
     }
   }

@@ -39,6 +39,7 @@ query activities {
 		type
 		date
 		time
+		photo_url
   }
 }
 `;

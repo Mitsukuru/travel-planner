@@ -46,6 +46,7 @@ interface Activity {
   name: string;
   notes?: string;
   date:  Date;
+  photo_url?: string;
 }
 
 interface DayPlan {
@@ -187,6 +188,7 @@ export default function TravelPlanner() {
           name: activity.name,
           notes: activity.notes,
           date: activity.date,
+          photo_url: activity.photo_url,
         });
       }
     });
@@ -546,7 +548,26 @@ export default function TravelPlanner() {
                         </div>
 
                         {/* 内容 */}
-                        <div className="ml-4 bg-white rounded-lg border border-gray-200 p-4 flex-1 shadow-sm group-hover:shadow">
+                        <div className="ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
+                          {/* 背景画像 */}
+                          {activity.photo_url && editingActivity !== index && (
+                            <div className="absolute inset-0 flex">
+                              <div className="flex-1"></div>
+                              <div className="w-1/2 h-full relative">
+                                <img
+                                  src={activity.photo_url}
+                                  alt={activity.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="relative z-10 p-4">
                           {editingActivity === index ? (
                             <div className="space-y-3">
                               <div className="flex items-start">
@@ -586,12 +607,12 @@ export default function TravelPlanner() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex justify-between">
-                              <div className="flex items-start">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-start flex-1">
                                 <div className="mr-3">
                                   {getActivityIcon(activity.type)}
                                 </div>
-                                <div>
+                                <div className="flex-1 min-w-0">
                                   <h3 className="font-medium text-gray-800">
                                     {activity.name}
                                   </h3>
@@ -622,6 +643,7 @@ export default function TravelPlanner() {
                               </div>
                             </div>
                           )}
+                          </div>
                         </div>
                       </div>
                     ))}
