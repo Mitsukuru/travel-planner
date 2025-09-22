@@ -64,18 +64,21 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
   );
   
   // 選択された日の予算のみをフィルタ（メモ化）
-  const selectedDayBudgets = useMemo(() => 
+  const selectedDayBudgets = useMemo(() =>
     budgets.filter(budget => budget.date === selectedDate),
     [budgets, selectedDate]
   );
 
-  // 選択された日の合計金額を計算（メモ化）
-  const selectedDayTotal: number = useMemo(() => 
-    selectedDayBudgets.reduce((sum: number, budget: GraphQLBudget) => {
-      return sum + parseFloat(budget.amount);
-    }, 0),
-    [selectedDayBudgets]
-  );
+  // 選択された日までの累計金額を計算（メモ化）
+  const selectedDayTotal: number = useMemo(() => {
+    if (!selectedDate) return 0;
+
+    return budgets
+      .filter(budget => budget.date <= selectedDate)
+      .reduce((sum: number, budget: GraphQLBudget) => {
+        return sum + parseFloat(budget.amount);
+      }, 0);
+  }, [budgets, selectedDate]);
 
   // 全体の合計金額を計算（メモ化）
   const totalAmount: number = useMemo(() => 
@@ -119,7 +122,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
             <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-center lg:text-left">
-                  <div className="text-sm text-gray-600 mb-1">本日の支出</div>
+                  <div className="text-sm text-gray-600 mb-1">本日までの支出</div>
                   <div className="text-2xl font-bold text-blue-600">
                     ¥{selectedDayTotal.toLocaleString()}
                   </div>
