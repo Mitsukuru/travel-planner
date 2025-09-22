@@ -544,9 +544,16 @@ export default function TravelPlanner() {
               <div className="flex-1 overflow-y-auto">
                 <div className="p-4 lg:p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-800 hidden lg:block">
-                      {selectedDay}日目
-                    </h2>
+                    <div className="flex items-center hidden lg:block">
+                      <h2 className="text-xl font-bold text-gray-800">
+                        {selectedDay}日目
+                      </h2>
+                      {activeTab === "map" && (
+                        <span className="ml-2 text-sm text-gray-500">
+                          時系列順で表示中
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* タイムライン */}

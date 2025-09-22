@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GoogleMap, useJsApiLoader, Marker, OverlayView } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, OverlayView, Polyline } from '@react-google-maps/api';
 import { GET_ACTIVITIES } from '@/graphql/queries';
 
 interface Activity {
@@ -35,6 +35,7 @@ interface MapPageProps {
 const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
+  const [map, setMap] = useState<google.maps.Map | null>(null);
 
   const { data: activitiesData, loading, error } = useQuery(GET_ACTIVITIES);
 
@@ -69,30 +70,52 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
     libraries: ['places']
   });
 
-  const onLoad = useCallback(() => {
-    // マップの初期設定をここで行えます
+  const onLoad = useCallback((mapInstance: google.maps.Map) => {
+    setMap(mapInstance);
   }, []);
+
+  // 選択された日のアクティビティに合わせてマップの表示範囲を調整
+  const fitBoundsToActivities = useCallback(() => {
+    if (!map || !activitiesByDay[selectedDay] || activitiesByDay[selectedDay].length === 0) {
+      return;
+    }
+
+    const bounds = new window.google.maps.LatLngBounds();
+    activitiesByDay[selectedDay].forEach(activity => {
+      if (activity.lat && activity.lng) {
+        bounds.extend(new window.google.maps.LatLng(activity.lat, activity.lng));
+      }
+    });
+
+    // アクティビティが1つの場合は適切なズームレベルを設定
+    if (activitiesByDay[selectedDay].length === 1) {
+      const activity = activitiesByDay[selectedDay][0];
+      map.setCenter({ lat: activity.lat!, lng: activity.lng! });
+      map.setZoom(15);
+    } else {
+      // 複数のアクティビティがある場合は全て表示
+      map.fitBounds(bounds, 50); // 50px のパディング
+    }
+  }, [map, selectedDay, activitiesByDay]);
+
+  // selectedDayまたはactivitiesByDayが変更された時にfitBoundsを実行
+  useEffect(() => {
+    if (map && activitiesByDay[selectedDay]) {
+      // 少し遅延させてマーカーが描画されてから実行
+      setTimeout(() => {
+        fitBoundsToActivities();
+      }, 100);
+    }
+  }, [selectedDay, activitiesByDay, fitBoundsToActivities, map]);
 
   const handleMarkerClick = (activity: Activity) => {
     setSelectedActivity(activity);
   };
 
-  // 選択された日のアクティビティの中心座標を計算
-  const getMapCenter = () => {
-    const dayActivities = activitiesByDay[selectedDay];
-    if (!dayActivities || dayActivities.length === 0) {
-      return defaultCenter;
-    }
-
-    const avgLat = dayActivities.reduce((sum, activity) => sum + (activity.lat || 0), 0) / dayActivities.length;
-    const avgLng = dayActivities.reduce((sum, activity) => sum + (activity.lng || 0), 0) / dayActivities.length;
-
-    return { lat: avgLat, lng: avgLng };
-  };
 
   // アクティビティタイプに基づくマーカーの色を取得
-  const getMarkerIcon = (type: string) => {
-    const icons: {[key: string]: string} = {
+  const getMarkerColor = (type: string) => {
+    const colors: {[key: string]: string} = {
       'transport': '#3B82F6', // 青
       'sightseeing': '#10B981', // 緑
       'restaurant': '#F59E0B', // オレンジ
@@ -100,15 +123,20 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
       'activity': '#EF4444', // 赤
       'area': '#6B7280', // グレー
     };
+    return colors[type] || '#6B7280';
+  };
 
-    return {
-      path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
-      fillColor: icons[type] || '#6B7280',
-      fillOpacity: 1,
-      stroke: '#FFFFFF',
-      strokeWeight: 2,
-      scale: 8,
-    };
+  // 番号付きマーカーのSVGアイコンを生成
+  const createNumberedMarkerIcon = (number: number, type: string) => {
+    const color = getMarkerColor(type);
+    const svg = `
+      <svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 0C6.716 0 0 6.716 0 15c0 8.284 15 25 15 25s15-16.716 15-25C30 6.716 23.284 0 15 0z" fill="${color}"/>
+        <circle cx="15" cy="15" r="12" fill="white"/>
+        <text x="15" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="${color}">${number}</text>
+      </svg>
+    `;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   };
 
   // アクティビティタイプの日本語表示
@@ -134,19 +162,37 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
         {isLoaded ? (
           <GoogleMap
             mapContainerStyle={containerStyle}
-            center={getMapCenter()}
-            zoom={13}
+            center={defaultCenter}
+            zoom={10}
             onLoad={onLoad}
           >
-            {activitiesByDay[selectedDay]?.map(activity => (
-              <Marker
-                key={activity.id}
-                position={{ lat: activity.lat!, lng: activity.lng! }}
-                onClick={() => handleMarkerClick(activity)}
-                title={activity.name}
-                icon={getMarkerIcon(activity.type)}
+            {/* 順番でソートされたアクティビティのマーカー */}
+            {activitiesByDay[selectedDay]
+              ?.sort((a, b) => a.time.localeCompare(b.time))
+              .map((activity, index) => (
+                <Marker
+                  key={activity.id}
+                  position={{ lat: activity.lat!, lng: activity.lng! }}
+                  onClick={() => handleMarkerClick(activity)}
+                  title={`${index + 1}. ${activity.name} (${activity.time})`}
+                  icon={createNumberedMarkerIcon(index + 1, activity.type)}
+                />
+              ))}
+
+            {/* アクティビティ間の移動ルート */}
+            {activitiesByDay[selectedDay] && activitiesByDay[selectedDay].length > 1 && (
+              <Polyline
+                path={activitiesByDay[selectedDay]
+                  .sort((a, b) => a.time.localeCompare(b.time))
+                  .map(activity => ({ lat: activity.lat!, lng: activity.lng! }))}
+                options={{
+                  strokeColor: '#4285F4',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 3,
+                  geodesic: true
+                }}
               />
-            ))}
+            )}
 
             {selectedActivity && (
               <OverlayView
@@ -164,7 +210,17 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
 
                   {/* コンテンツ */}
                   <div className="p-4">
-                    <h3 className="font-bold text-lg pr-8 mb-2">{selectedActivity.name}</h3>
+                    <div className="flex items-center mb-2">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold mr-2"
+                        style={{ backgroundColor: getMarkerColor(selectedActivity.type) }}
+                      >
+                        {activitiesByDay[selectedDay]
+                          ?.sort((a, b) => a.time.localeCompare(b.time))
+                          .findIndex(activity => activity.id === selectedActivity.id) + 1}
+                      </div>
+                      <h3 className="font-bold text-lg pr-6">{selectedActivity.name}</h3>
+                    </div>
                     <p className="text-sm text-gray-600 mb-3">{selectedActivity.location}</p>
 
                     <div className="space-y-1 mb-3">
