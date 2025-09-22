@@ -332,9 +332,11 @@ export default function TravelPlanner() {
               <Image
                 src="/images/header_logo-removebg-preview.png"
                 alt="ヘッダー画像"
-                width={80}
-                height={60}
+                width={120}
+                height={90}
                 className="img-header h-8 w-auto sm:h-10"
+                quality={100}
+                priority
               />
             </Link>
           </div>
@@ -371,16 +373,6 @@ export default function TravelPlanner() {
                 onClick={() => setActiveTab("budget")}
               >
                 予算
-              </button>
-              <button
-                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
-                  activeTab === "settings"
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-500"
-                }`}
-                onClick={() => setActiveTab("settings")}
-              >
-                設定
               </button>
             </div>
           </div>
