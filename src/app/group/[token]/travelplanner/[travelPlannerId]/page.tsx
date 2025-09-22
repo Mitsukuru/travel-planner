@@ -235,58 +235,65 @@ export default function TravelPlanner() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="container ml-4 flex w-auto">
-          <div className="max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center">
+          {/* ロゴ部分 */}
+          <div className="flex items-center px-4 py-2 sm:py-4">
             <Link href="/" className="flex items-center">
               <Image
                 src="/images/header_logo-removebg-preview.png"
                 alt="ヘッダー画像"
                 width={120}
                 height={100}
-                className="img-header"
+                className="img-header h-12 w-auto sm:h-16"
               />
             </Link>
           </div>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "plan"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("plan")}
-          >
-            旅行プラン
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "map"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("map")}
-          >
-            マップ
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "budget"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("budget")}
-          >
-            予算
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "settings"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("settings")}
-          >
-            設定
-          </button>
+
+          {/* タブボタン部分 */}
+          <div className="flex overflow-x-auto sm:flex-1 px-4 sm:px-0">
+            <div className="flex space-x-2 sm:space-x-0 min-w-full sm:min-w-0">
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "plan"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("plan")}
+              >
+                旅行プラン
+              </button>
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "map"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("map")}
+              >
+                マップ
+              </button>
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "budget"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("budget")}
+              >
+                予算
+              </button>
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "settings"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("settings")}
+              >
+                設定
+              </button>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -294,20 +301,10 @@ export default function TravelPlanner() {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* モバイル用日程選択 */}
         <div className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="flex items-center justify-between p-4">
-            <button
-              onClick={() => setIsMobileParticipantsOpen(!isMobileParticipantsOpen)}
-              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-            >
-              <Users className="w-5 h-5 mr-1" />
-              <span>{tripInfo.participants.length}人</span>
-            </button>
-          </div>
-
           {/* モバイル用日程タブ */}
-          <div className="px-4 pb-2">
+          <div className="px-4 py-3">
             <div className="flex overflow-x-auto scrollbar-hide -mx-4 px-4">
-              <div className="flex space-x-2 min-w-full">
+              <div className="flex space-x-3 min-w-full">
                 {Array.from({ length: tripInfo.days }, (_, i) => {
                   const dayNumber = i + 1;
                   const dayDate = new Date(startDate);
@@ -316,7 +313,7 @@ export default function TravelPlanner() {
                     month: 'numeric',
                     day: 'numeric'
                   });
-                  
+
                   return (
                     <button
                       key={i}
