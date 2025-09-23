@@ -888,6 +888,7 @@ export default function TravelPlanner() {
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
         defaultDate={selectedDateForModal || travelPlan.start_date}
+        onActivityAdded={refetchActivities}
       />
       <EditActivityModal
         isOpen={editModalOpen}

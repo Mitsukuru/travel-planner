@@ -8,6 +8,7 @@ interface AddActivityModalProps {
   onClose: () => void;
   itinerary_id: number;
   defaultDate?: string;
+  onActivityAdded?: () => void;
 }
 
 const typeOptions = [
@@ -19,7 +20,7 @@ const typeOptions = [
   { label: "エリア", value: "area" },
 ];
 
-const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, itinerary_id, defaultDate }) => {
+const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, itinerary_id, defaultDate, onActivityAdded }) => {
   const [date, setDate] = useState(defaultDate || "");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
@@ -212,6 +213,10 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       setLat(null);
       setLng(null);
       setPlaceId("");
+      // アクティビティが追加されたことを親コンポーネントに通知
+      if (onActivityAdded) {
+        onActivityAdded();
+      }
       onClose();
     } catch (e) {
       console.error(e);
