@@ -34,6 +34,9 @@ interface BudgetPageProps {
 const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [tripBudget, setTripBudget] = useState<number>(0);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [editBudgetValue, setEditBudgetValue] = useState<string>('');
 
   const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES);
   
@@ -51,6 +54,16 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
       setSelectedDate(dateString);
     }
   }, [currentItinerary?.start_date, selectedDay]);
+
+  // 旅の予算をlocalStorageから読み込み
+  useEffect(() => {
+    if (itineraryId) {
+      const savedBudget = localStorage.getItem(`trip-budget-${itineraryId}`);
+      if (savedBudget) {
+        setTripBudget(parseFloat(savedBudget));
+      }
+    }
+  }, [itineraryId]);
 
   const { data: budgetsData, loading: budgetsLoading, refetch: refetchBudgets } = useQuery(GET_BUDGETS, {
     variables: { itinerary_id: itineraryId },
@@ -81,11 +94,23 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
   }, [budgets, selectedDate]);
 
   // 全体の合計金額を計算（メモ化）
-  const totalAmount: number = useMemo(() => 
+  const totalAmount: number = useMemo(() =>
     budgets.reduce((sum: number, budget: GraphQLBudget) => {
       return sum + parseFloat(budget.amount);
     }, 0),
     [budgets]
+  );
+
+  // 予算残高を計算（メモ化）
+  const budgetBalance: number = useMemo(() =>
+    tripBudget - selectedDayTotal,
+    [tripBudget, selectedDayTotal]
+  );
+
+  // 予算オーバーかどうかを判定（メモ化）
+  const isOverBudget: boolean = useMemo(() =>
+    budgetBalance < 0,
+    [budgetBalance]
   );
 
 
@@ -97,6 +122,25 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
     refetchBudgets();
   }, [refetchBudgets]);
 
+  const handleEditBudget = useCallback(() => {
+    setEditBudgetValue(tripBudget.toString());
+    setIsEditingBudget(true);
+  }, [tripBudget]);
+
+  const handleSaveBudget = useCallback(() => {
+    const newBudget = parseFloat(editBudgetValue) || 0;
+    setTripBudget(newBudget);
+    if (itineraryId) {
+      localStorage.setItem(`trip-budget-${itineraryId}`, newBudget.toString());
+    }
+    setIsEditingBudget(false);
+  }, [editBudgetValue, itineraryId]);
+
+  const handleCancelEditBudget = useCallback(() => {
+    setIsEditingBudget(false);
+    setEditBudgetValue('');
+  }, []);
+
   if (itinerariesLoading) {
     return <div className="p-6">読み込み中...</div>;
   }
@@ -106,7 +150,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
       <div className="p-6">
         <div className="text-center">
           <h2 className="text-xl font-bold mb-2">旅行プランが見つかりませんでした</h2>
-          <p className="text-gray-600">予算を管理するための旅行プランが存在しません。</p>
+          <p className="text-gray-600">支出を管理するための旅行プランが存在しません。</p>
         </div>
       </div>
     );
@@ -123,16 +167,57 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-center lg:text-left">
                   <div className="text-sm text-gray-600 mb-1">本日までの支出</div>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className={`text-2xl font-bold ${isOverBudget ? 'text-red-600' : 'text-blue-600'}`}>
                     ¥{selectedDayTotal.toLocaleString()}
                   </div>
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-center lg:text-left">
-                  <div className="text-sm text-gray-600 mb-1">合計予算</div>
-                  <div className="text-xl font-semibold text-gray-900">
-                    ¥{totalAmount.toLocaleString()}
+                  <div className="text-sm text-gray-600 mb-1">旅の予算</div>
+                  {isEditingBudget ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editBudgetValue}
+                        onChange={(e) => setEditBudgetValue(e.target.value)}
+                        className="text-xl font-semibold border rounded px-2 py-1 w-32"
+                        placeholder="予算を入力"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSaveBudget}
+                        className="bg-green-600 text-white px-2 py-1 rounded text-sm"
+                      >
+                        保存
+                      </button>
+                      <button
+                        onClick={handleCancelEditBudget}
+                        className="bg-gray-600 text-white px-2 py-1 rounded text-sm"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="text-xl font-semibold text-gray-900">
+                        ¥{tripBudget.toLocaleString()}
+                      </div>
+                      <button
+                        onClick={handleEditBudget}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        編集
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-center lg:text-left">
+                  <div className="text-sm text-gray-600 mb-1">残予算</div>
+                  <div className={`text-xl font-semibold ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
+                    {isOverBudget ? '-' : ''}¥{Math.abs(budgetBalance).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -140,7 +225,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
                 onClick={handleAddBudget}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors"
               >
-                + 予算を追加
+                + 支出を追加
               </button>
             </div>
           </div>
@@ -158,16 +243,16 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {selectedDay}日目の予算がありません
+                  {selectedDay}日目の支出がありません
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  この日の支出を記録するために予算を追加してください
+                  この日の支出を記録してください
                 </p>
                 <button
                   onClick={handleAddBudget}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
-                  最初の予算を追加
+                  最初の支出を追加
                 </button>
               </div>
             ) : (
@@ -197,11 +282,11 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
         {budgetsLoading && (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">予算データを読み込み中...</p>
+            <p className="text-gray-500">支出データを読み込み中...</p>
           </div>
         )}
 
-      {/* 予算追加モーダル */}
+      {/* 支出追加モーダル */}
       {isAddModalOpen && (
         <AddBudgetModal
           isOpen={isAddModalOpen}

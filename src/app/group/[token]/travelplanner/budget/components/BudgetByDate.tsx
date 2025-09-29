@@ -23,23 +23,23 @@ interface BudgetByDateProps {
 }
 
 const categoryLabels: { [key: string]: string } = {
-  transport: '交通費',
-  accommodation: '宿泊費', 
-  food: '食事',
-  sightseeing: '観光・アクティビティ',
-  shopping: 'お土産',
+  transport: '交通',
+  sightseeing: '観光スポット',
+  restaurant: '飲食店',
+  hotel: 'ホテル',
+  activity: 'アクティビティ',
+  area: 'エリア',
   other: 'その他',
-  expense: '支出',
 };
 
 const categoryColors: { [key: string]: string } = {
   transport: 'bg-blue-100 text-blue-800',
-  accommodation: 'bg-purple-100 text-purple-800',
-  food: 'bg-green-100 text-green-800',
   sightseeing: 'bg-yellow-100 text-yellow-800',
-  shopping: 'bg-pink-100 text-pink-800',
+  restaurant: 'bg-green-100 text-green-800',
+  hotel: 'bg-purple-100 text-purple-800',
+  activity: 'bg-pink-100 text-pink-800',
+  area: 'bg-indigo-100 text-indigo-800',
   other: 'bg-gray-100 text-gray-800',
-  expense: 'bg-orange-100 text-orange-800',
 };
 
 const BudgetByDate: React.FC<BudgetByDateProps> = ({
@@ -96,7 +96,7 @@ const BudgetByDate: React.FC<BudgetByDateProps> = ({
                         categoryColors[category] || categoryColors.other
                       }`}
                     >
-                      {categoryLabels[category] || category}
+                      {categoryLabels[category] || categoryLabels.other}
                     </span>
                   </div>
                   <div className="text-right">

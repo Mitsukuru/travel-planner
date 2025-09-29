@@ -84,11 +84,17 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.activityId || !formData.amount) {
       alert('アクティビティと金額は必須です');
       return;
     }
+
+    // 選択されたアクティビティのタイプを取得
+    const selectedActivity = activitiesData?.activities?.find(
+      (activity: any) => activity.id === parseInt(formData.activityId)
+    );
+    const activityType = selectedActivity?.type || 'other';
 
     try {
       await insertBudget({
@@ -96,7 +102,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           itinerary_id: itineraryId,
           date: selectedDate,
           activity_id: parseInt(formData.activityId),
-          category: 'expense', // 固定値
+          category: activityType, // アクティビティのタイプを使用
           amount: parseFloat(formData.amount),
           description: formData.description,
           currency: formData.currency,
@@ -117,8 +123,8 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
         paidBy: participants[0]
       });
     } catch (error) {
-      console.error('予算の追加に失敗しました:', error);
-      alert('予算の追加に失敗しました');
+      console.error('支出の追加に失敗しました:', error);
+      alert('支出の追加に失敗しました');
     }
   };
 
@@ -148,7 +154,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
         <button
           className="absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-2xl"
@@ -157,7 +163,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           ×
         </button>
         
-        <h2 className="text-xl font-bold text-gray-900 mb-6">予算を追加</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">支出を追加</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 日程選択 */}
@@ -233,26 +239,18 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               金額 <span className="text-red-500">*</span>
             </label>
-            <div className="flex">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">¥</span>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                className="flex-1 border border-gray-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.amount}
                 onChange={(e) => handleInputChange('amount', e.target.value)}
-                placeholder="0.00"
+                placeholder="0"
                 required
               />
-              <select
-                className="border border-l-0 border-gray-300 rounded-r-md px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.currency}
-                onChange={(e) => handleInputChange('currency', e.target.value)}
-              >
-                <option value="JPY">¥ JPY</option>
-                <option value="USD">$ USD</option>
-                <option value="EUR">€ EUR</option>
-              </select>
             </div>
           </div>
 
@@ -285,7 +283,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
               disabled={isSubmitting}
             >
-              {isSubmitting ? '追加中...' : '追加'}
+              {isSubmitting ? '追加中...' : '支出を追加'}
             </button>
           </div>
         </form>
