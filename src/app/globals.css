@@ -127,3 +127,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* カスタムアニメーション */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 1s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 1s ease-out forwards;
+  opacity: 0;
+}
