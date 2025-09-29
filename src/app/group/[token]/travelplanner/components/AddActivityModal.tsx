@@ -24,7 +24,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const [date, setDate] = useState(defaultDate || "");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
-  const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [type, setType] = useState(typeOptions[0].value);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
@@ -152,11 +151,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     setShowSuggestions(false);
     setPlaceId(suggestion.place_id);
 
-    // 名前が空の場合、選択した場所の名前を自動入力
-    if (!name && suggestion.structured_formatting.main_text) {
-      setName(suggestion.structured_formatting.main_text);
-    }
-
     // 場所の詳細情報と写真を取得
     if (placesService.current && suggestion.place_id) {
       placesService.current.getDetails(
@@ -192,7 +186,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
           date,
           time,
           location,
-          name,
+          name: location,
           notes,
           type,
           photo_url: photoUrl,
@@ -204,7 +198,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       // フォームをリセット
       setTime("");
       setLocation("");
-      setName("");
       setNotes("");
       setType(typeOptions[0].value);
       setSuggestions([]);
@@ -318,16 +311,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
                 })}
               </div>
             )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">タイトル</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">説明</label>

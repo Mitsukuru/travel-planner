@@ -34,7 +34,6 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ isOpen, onClose, 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
-  const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [type, setType] = useState(typeOptions[0].value);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
@@ -71,7 +70,6 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ isOpen, onClose, 
       setDate(activityDate.toISOString().split('T')[0]);
       setTime(activity.time.substring(0, 5)); // HH:MM:SS から HH:MM を取得
       setLocation(activity.location);
-      setName(activity.name);
       setNotes(activity.notes || "");
       setType(activity.type);
       setPhotoUrl(activity.photo_url || "");
@@ -206,7 +204,7 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ isOpen, onClose, 
       await updateActivity({
         variables: {
           id: activity.id,
-          name,
+          name: location,
           location,
           notes,
           type,
@@ -320,16 +318,6 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ isOpen, onClose, 
                 })}
               </div>
             )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">タイトル</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={name || ""}
-              onChange={e => setName(e.target.value)}
-              required
-            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">説明</label>
