@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import Link from "next/link";
 import Image from "next/image";
 import MapPage from "../map/page";
+import BudgetPage from "../budget/page";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
+import { UPDATE_ACTIVITY, DELETE_ACTIVITY } from "@/graphql/mutates";
 import {
   MapPin,
   ThumbsUp,
@@ -26,8 +28,11 @@ import {
   Tag,
   Search,
   Filter,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import AddActivityModal from "../components/AddActivityModal";
+import EditActivityModal from "../components/EditActivityModal";
 
 interface TripInfo {
   destination: string;
@@ -38,11 +43,17 @@ interface TripInfo {
 }
 
 interface Activity {
+  id?: number;
   time: string;
   type: string;
   name: string;
+  location: string;
   notes?: string;
   date:  Date;
+  photo_url?: string;
+  lat?: number;
+  lng?: number;
+  place_id?: string;
 }
 
 interface DayPlan {
@@ -65,11 +76,12 @@ interface Suggestion {
 
 export default function TravelPlanner() {
   const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES);
-  const { data: activitiesData } = useQuery(GET_ACTIVITIES);
+  const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES);
+  const [updateActivity] = useMutation(UPDATE_ACTIVITY);
+  const [deleteActivity] = useMutation(DELETE_ACTIVITY);
 
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
-  const [editMode, setEditMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recommendationType, setRecommendationType] = useState("nearby");
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,6 +89,15 @@ export default function TravelPlanner() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [localActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
+  const [participants, setParticipants] = useState(["まさあき", "たまよ", "こうすけ", "るり"]);
+  const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState("");
+  const [isEditParticipantModalOpen, setIsEditParticipantModalOpen] = useState(false);
+  const [editingParticipantIndex, setEditingParticipantIndex] = useState<number | null>(null);
+  const [editingParticipantName, setEditingParticipantName] = useState("");
   
 
   if (loading) {
@@ -136,7 +157,7 @@ export default function TravelPlanner() {
     destination: travelPlan.destination,
     startDate: travelPlan.start_date,
     endDate: travelPlan.end_date,
-    participants: ["まさあき", "たまよ", "こうすけ", "るり"],
+    participants: participants,
     days: termDay,
   };
 
@@ -175,11 +196,13 @@ export default function TravelPlanner() {
       const d = day(activity.date);
       if (groupedActivities[d - 1]) {
         groupedActivities[d - 1].activities.push({
+          id: activity.id,
           time: activity.time,
           type: activity.type,
           name: activity.name,
           notes: activity.notes,
           date: activity.date,
+          photo_url: activity.photo_url,
         });
       }
     });
@@ -207,6 +230,80 @@ export default function TravelPlanner() {
     }
   };
 
+  // 時間フォーマット関数（HH:MM:SS -> HH:MM）
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    return timeString.substring(0, 5); // HH:MM:SS から HH:MM を取得
+  };
+
+  // 編集開始
+  const startEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    setEditModalOpen(true);
+  };
+
+  // アクティビティ削除
+  const handleDeleteActivity = async (index: number) => {
+    try {
+      const selectedDayActivities = activities.find((day) => day.day === selectedDay)?.activities || [];
+      const currentActivity = selectedDayActivities.concat(
+        localActivities.filter(a => day(a.date) === selectedDay)
+      )
+      .sort((a, b) => {
+        const timeA = a.time.split(':').map(Number);
+        const timeB = b.time.split(':').map(Number);
+        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+      })[index];
+
+      if (currentActivity?.id && confirm('このアクティビティを削除しますか？')) {
+        await deleteActivity({
+          variables: {
+            id: currentActivity.id
+          }
+        });
+
+        // データを再取得
+        await refetchActivities();
+      }
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      alert('アクティビティの削除に失敗しました');
+    }
+  };
+
+  // 参加者追加の処理
+  const handleAddParticipant = () => {
+    if (newParticipantName.trim()) {
+      setParticipants([...participants, newParticipantName.trim()]);
+      setNewParticipantName("");
+      setIsAddParticipantModalOpen(false);
+    }
+  };
+
+  // 参加者削除の処理
+  const handleRemoveParticipant = (index: number) => {
+    setParticipants(participants.filter((_, i) => i !== index));
+  };
+
+  // 参加者編集開始の処理
+  const handleEditParticipant = (index: number) => {
+    setEditingParticipantIndex(index);
+    setEditingParticipantName(participants[index]);
+    setIsEditParticipantModalOpen(true);
+  };
+
+  // 参加者編集完了の処理
+  const handleUpdateParticipant = () => {
+    if (editingParticipantName.trim() && editingParticipantIndex !== null) {
+      const updatedParticipants = [...participants];
+      updatedParticipants[editingParticipantIndex] = editingParticipantName.trim();
+      setParticipants(updatedParticipants);
+      setEditingParticipantName("");
+      setEditingParticipantIndex(null);
+      setIsEditParticipantModalOpen(false);
+    }
+  };
+
   // おすすめ情報の取得（サンプル）
   const getRecommendations = (): Suggestion[] => {
     return [
@@ -228,58 +325,57 @@ export default function TravelPlanner() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="container ml-4 flex w-auto">
-          <div className="max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center">
+          {/* ロゴ部分 */}
+          <div className="flex items-center px-4 py-2 sm:py-4">
             <Link href="/" className="flex items-center">
               <Image
                 src="/images/header_logo-removebg-preview.png"
                 alt="ヘッダー画像"
                 width={120}
-                height={100}
-                className="img-header"
+                height={90}
+                className="img-header h-8 w-auto sm:h-10"
+                quality={100}
+                priority
               />
             </Link>
           </div>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "plan"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("plan")}
-          >
-            旅行プラン
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "map"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("map")}
-          >
-            マップ
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "budget"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("budget")}
-          >
-            予算
-          </button>
-          <button
-            className={`px-4 py-3 font-bold ${
-              activeTab === "settings"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("settings")}
-          >
-            設定
-          </button>
+
+          {/* タブボタン部分 */}
+          <div className="flex overflow-x-auto sm:flex-1 px-4 sm:px-0">
+            <div className="flex space-x-2 sm:space-x-0 min-w-full sm:min-w-0">
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "plan"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("plan")}
+              >
+                旅行プラン
+              </button>
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "map"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("map")}
+              >
+                マップ
+              </button>
+              <button
+                className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
+                  activeTab === "budget"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500"
+                }`}
+                onClick={() => setActiveTab("budget")}
+              >
+                予算
+              </button>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -287,33 +383,33 @@ export default function TravelPlanner() {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* モバイル用日程選択 */}
         <div className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="flex items-center justify-between p-4">
-            <button
-              onClick={() => setIsMobileParticipantsOpen(!isMobileParticipantsOpen)}
-              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-            >
-              <Users className="w-5 h-5 mr-1" />
-              <span>{tripInfo.participants.length}人</span>
-            </button>
-          </div>
-
           {/* モバイル用日程タブ */}
-          <div className="px-4 pb-2">
+          <div className="px-4 py-3">
             <div className="flex overflow-x-auto scrollbar-hide -mx-4 px-4">
-              <div className="flex space-x-2 min-w-full">
-                {Array.from({ length: tripInfo.days }, (_, i) => (
-                  <button
-                    key={i}
-                    className={`flex-none px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedDay === i + 1
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setSelectedDay(i + 1)}
-                  >
-                    {i + 1}日目
-                  </button>
-                ))}
+              <div className="flex space-x-3 min-w-full">
+                {Array.from({ length: tripInfo.days }, (_, i) => {
+                  const dayNumber = i + 1;
+                  const dayDate = new Date(startDate);
+                  dayDate.setDate(dayDate.getDate() + i);
+                  const formattedDate = dayDate.toLocaleDateString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric'
+                  });
+
+                  return (
+                    <button
+                      key={i}
+                      className={`flex-none px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedDay === dayNumber
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                      onClick={() => setSelectedDay(dayNumber)}
+                    >
+                      {dayNumber}日目 {formattedDate}日
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -327,12 +423,33 @@ export default function TravelPlanner() {
                   <h3 className="font-semibold text-gray-700 mb-2">参加者</h3>
                   <div className="space-y-2">
                     {tripInfo.participants.map((person, index) => (
-                      <div key={index} className="flex items-center text-sm text-gray-600">
-                        <Users className="w-4 h-4 mr-2" />
-                        {person}
+                      <div key={index} className="group flex items-center justify-between text-sm text-gray-600 hover:bg-gray-50 rounded px-2 py-1 transition-colors">
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-2" />
+                          {person}
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
+                          <button
+                            onClick={() => handleEditParticipant(index)}
+                            className="text-blue-500 hover:text-blue-700 p-1"
+                            title="編集"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveParticipant(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="削除"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
-                    <button className="text-blue-600 text-sm flex items-center mt-2">
+                    <button
+                      onClick={() => setIsAddParticipantModalOpen(true)}
+                      className="text-blue-600 text-sm flex items-center mt-2 hover:text-blue-800"
+                    >
                       + 参加者を追加
                     </button>
                   </div>
@@ -348,19 +465,31 @@ export default function TravelPlanner() {
             <div className="p-4">
               <h2 className="font-semibold text-gray-700 mb-2">日程</h2>
               <div className="space-y-1">
-                {Array.from({ length: tripInfo.days }, (_, i) => (
-                  <button
-                    key={i}
-                    className={`w-full text-left px-3 py-2 rounded-md ${
-                      selectedDay === i + 1
-                        ? "bg-blue-100 text-blue-700"
-                        : "hover:bg-gray-100"
-                    }`}
-                    onClick={() => setSelectedDay(i + 1)}
-                  >
-                    {i + 1}日目
-                  </button>
-                ))}
+                {Array.from({ length: tripInfo.days }, (_, i) => {
+                  const dayNumber = i + 1;
+                  const dayDate = new Date(startDate);
+                  dayDate.setDate(dayDate.getDate() + i);
+                  const formattedDate = dayDate.toLocaleDateString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric'
+                  });
+                  
+                  return (
+                    <button
+                      key={i}
+                      className={`w-full text-left px-3 py-2 rounded-md ${
+                        selectedDay === dayNumber
+                          ? "bg-blue-100 text-blue-700"
+                          : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => setSelectedDay(dayNumber)}
+                    >
+                      <div className="font-medium">
+                        {dayNumber}日目 {formattedDate}日
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -370,35 +499,61 @@ export default function TravelPlanner() {
                 {tripInfo.participants.map((person, index) => (
                   <div
                     key={index}
-                    className="flex items-center text-sm text-gray-600"
+                    className="group flex items-center justify-between text-sm text-gray-600 hover:bg-gray-50 rounded px-2 py-1 transition-colors"
                   >
-                    <Users className="w-4 h-4 mr-2" />
-                    {person}
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 mr-2" />
+                      {person}
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
+                      <button
+                        onClick={() => handleEditParticipant(index)}
+                        className="text-blue-500 hover:text-blue-700 p-1"
+                        title="編集"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveParticipant(index)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="削除"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
-                <button className="text-blue-600 text-sm flex items-center mt-2">
+                <button
+                  onClick={() => setIsAddParticipantModalOpen(true)}
+                  className="text-blue-600 text-sm flex items-center mt-2 hover:text-blue-800"
+                >
                   + 参加者を追加
                 </button>
               </div>
             </div>
           </div>
           {activeTab === "map" ? (
-            <MapPage />
+            <div className="flex-1 w-full h-full">
+              <MapPage selectedDay={selectedDay} />
+            </div>
+          ) : activeTab === "budget" ? (
+            <BudgetPage selectedDay={selectedDay} />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}
               <div className="flex-1 overflow-y-auto">
                 <div className="p-4 lg:p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-800 hidden lg:block">
-                      {selectedDay}日目
-                    </h2>
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1.5 lg:px-4 lg:py-2 rounded-md text-sm lg:text-base"
-                      onClick={() => setEditMode(!editMode)}
-                    >
-                      {editMode ? "完了" : "編集"}
-                    </button>
+                    <div className="flex items-center hidden lg:block">
+                      <h2 className="text-xl font-bold text-gray-800">
+                        {selectedDay}日目
+                      </h2>
+                      {activeTab === "map" && (
+                        <span className="ml-2 text-sm text-gray-500">
+                          時系列順で表示中
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* タイムライン */}
@@ -415,12 +570,21 @@ export default function TravelPlanner() {
                       <div key={index} className="flex group">
                         {/* 時間列 */}
                         <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {activity.time}
+                          {editingActivity === index ? (
+                            <input
+                              type="time"
+                              value={editForm.time}
+                              onChange={(e) => setEditForm({...editForm, time: e.target.value})}
+                              className="w-full text-sm border border-gray-300 rounded px-1 py-1"
+                            />
+                          ) : (
+                            formatTime(activity.time)
+                          )}
                         </div>
 
                         {/* タイムラインの縦線 */}
                         <div className="relative flex flex-col items-center">
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
                           {index <
                             (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
                             1 && (
@@ -429,41 +593,61 @@ export default function TravelPlanner() {
                         </div>
 
                         {/* 内容 */}
-                        <div className="ml-4 bg-white rounded-lg border border-gray-200 p-4 flex-1 shadow-sm group-hover:shadow">
-                          <div className="flex justify-between">
-                            <div className="flex items-start">
-                              <div className="mr-3">
-                                {getActivityIcon(activity.type)}
-                              </div>
-                              <div>
-                                <h3 className="font-medium text-gray-800">
-                                  {activity.name}
-                                </h3>
-                                <p className="text-gray-600 text-sm mt-1">
-                                  {activity.notes}
-                                </p>
+                        <div className="ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
+                          {/* 背景画像 */}
+                          {activity.photo_url && (
+                            <div className="absolute inset-0 flex">
+                              <div className="flex-1"></div>
+                              <div className="w-1/2 h-full relative">
+                                <img
+                                  src={activity.photo_url}
+                                  alt={activity.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
                               </div>
                             </div>
-                            {editMode && (
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 9l-7 7-7-7"
-                                    />
+                          )}
+                          <div className="relative z-10 p-4">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-start flex-1">
+                                <div className="mr-3">
+                                  {getActivityIcon(activity.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium text-gray-800">
+                                    {activity.name}
+                                  </h3>
+                                  <p className="text-gray-600 text-sm mt-1">
+                                    {activity.notes}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => startEditActivity(activity)}
+                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                  title="編集"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteActivity(index)}
+                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                  title="削除"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
                                 </button>
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -477,7 +661,14 @@ export default function TravelPlanner() {
                       </div>
                       <button
                         className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => setAddModalOpen(true)}
+                        onClick={() => {
+                          // 現在選択されている日の実際の日付を計算
+                          const selectedDate = new Date(startDate);
+                          selectedDate.setDate(selectedDate.getDate() + (selectedDay - 1));
+                          const formattedSelectedDate = selectedDate.toISOString().split('T')[0];
+                          setSelectedDateForModal(formattedSelectedDate);
+                          setAddModalOpen(true);
+                        }}
                       >
                         <span className="text-blue-600">
                           + アクティビティを追加
@@ -488,206 +679,6 @@ export default function TravelPlanner() {
                 </div>
               </div>
 
-              {/* サイドバー開閉ボタン */}
-              <button
-                className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-l-md shadow-md hidden sm:block"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                {sidebarOpen ? (
-                  <ChevronRight className="w-4 h-4" />
-                ) : (
-                  <ChevronLeft className="w-4 h-4" />
-                )}
-              </button>
-
-              {/* 右サイドバー：AIおすすめ - 開閉可能 */}
-              <div
-                className={`${
-                  sidebarOpen ? "w-90" : "w-0"
-                } bg-white border-l border-gray-200 overflow-y-auto transition-all duration-300 hidden sm:block`}
-              >
-                {sidebarOpen && (
-                  <div className="p-4">
-                    <h2 className="font-semibold text-gray-700 mb-2">
-                      AIおすすめ
-                    </h2>
-
-                    {/* 現在の場所コンテキスト */}
-                    {currentActivity && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-blue-700">
-                          <span className="font-medium">
-                            {currentActivity.name}
-                          </span>{" "}
-                          周辺のおすすめです
-                        </p>
-                      </div>
-                    )}
-
-                    {/* 検索バー */}
-                    <div className="mb-4">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="場所やキーワードを検索..."
-                          className="w-full border border-gray-300 rounded-md py-2 pl-8 pr-2 text-sm"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <Search className="absolute left-2 top-2 w-4 h-4 text-gray-400" />
-                      </div>
-                    </div>
-
-                    {/* AIおすすめカテゴリ */}
-                    <div
-                      className="mb-4 overflow-x-auto"
-                      style={{ scrollbarWidth: "none" }}
-                    >
-                      <div className="flex space-x-2">
-                        {aiRecommendationCategories.map((category) => (
-                          <button
-                            key={category.id}
-                            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium flex items-center ${
-                              recommendationType === category.id
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                            onClick={() => setRecommendationType(category.id)}
-                          >
-                            <span className="mr-1">{category.icon}</span>
-                            {category.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* AIフィルター */}
-                    <div className="mb-4 flex items-center text-sm">
-                      <Filter className="w-4 h-4 text-gray-500 mr-1" />
-                      <span className="text-gray-700 mr-2">フィルター:</span>
-                      <select className="border border-gray-300 rounded px-2 py-1 text-xs">
-                        <option>すべてのタイプ</option>
-                        <option>観光スポット</option>
-                        <option>飲食店</option>
-                        <option>アクティビティ</option>
-                      </select>
-                      <button className="ml-auto text-blue-600 text-xs">
-                        AI分析
-                      </button>
-                    </div>
-
-                    {/* おすすめリスト */}
-                    <div className="space-y-4">
-                      {getRecommendations().map((suggestion, index) => (
-                        <div
-                          key={index}
-                          className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow cursor-pointer transition-all"
-                        >
-                          <div className="flex">
-                            {/* サムネイル画像 */}
-                            <div className="w-16 h-16 rounded overflow-hidden bg-gray-200 flex-shrink-0 mr-3">
-                              <Image
-                                src={suggestion.photo}
-                                alt={suggestion.name}
-                                width={64}
-                                height={64}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-medium text-gray-800 flex items-center">
-                                    {getActivityIcon(suggestion.type)}
-                                    <span className="ml-1">
-                                      {suggestion.name}
-                                    </span>
-                                  </h3>
-                                  <div className="flex items-center mt-1">
-                                    <Star className="w-3 h-3 text-yellow-400" />
-                                    <span className="text-xs text-gray-600 ml-1">
-                                      {suggestion.rating}
-                                    </span>
-
-                                    {suggestion.distance && (
-                                      <span className="text-xs text-gray-500 ml-2">
-                                        • {suggestion.distance}
-                                      </span>
-                                    )}
-
-                                    {suggestion.price && (
-                                      <span className="text-xs text-gray-600 ml-2">
-                                        {suggestion.price}
-                                      </span>
-                                    )}
-
-                                    {suggestion.visitTime && (
-                                      <span className="text-xs text-gray-500 ml-2">
-                                        • {suggestion.visitTime}
-                                      </span>
-                                    )}
-
-                                    {suggestion.bestTime && (
-                                      <span className="text-xs text-gray-500 ml-2">
-                                        • {suggestion.bestTime}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <button className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                                  追加
-                                </button>
-                              </div>
-
-                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                {suggestion.description}
-                              </p>
-
-                              {/* タグ */}
-                              {suggestion.tags && (
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                  {suggestion.tags.map((tag, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800"
-                                    >
-                                      <Tag className="w-2 h-2 mr-1" />
-                                      {tag}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* AIパーソナライズド提案 */}
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                      <h3 className="font-medium text-blue-800 mb-2 flex items-center">
-                        <span className="mr-2">✨</span>
-                        あなただけのAI提案
-                      </h3>
-                      <p className="text-sm text-blue-700 mb-3">
-                        現在の旅程分析から、以下のプランをおすすめします：
-                      </p>
-                      <div className="bg-white p-3 rounded-md shadow-sm">
-                        <h4 className="font-medium text-gray-800">
-                          嵐山&rarr;金閣寺&rarr;銀閣寺コース
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          効率的な移動で京都の名所を網羅できるルートです。所要時間は約6時間です。
-                        </p>
-                        <button className="mt-2 w-full bg-blue-100 text-blue-700 text-xs font-medium py-1 rounded">
-                          詳細を見る
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>
@@ -696,8 +687,122 @@ export default function TravelPlanner() {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
-        defaultDate={travelPlan.start_date}
+        defaultDate={selectedDateForModal || travelPlan.start_date}
+        onActivityAdded={refetchActivities}
       />
+      <EditActivityModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingActivity(null);
+          refetchActivities(); // データを再取得
+        }}
+        activity={editingActivity}
+      />
+
+      {/* 参加者追加モーダル */}
+      {isAddParticipantModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: '#0000004d' }}>
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-2 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => setIsAddParticipantModalOpen(false)}
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold mb-4">参加者を追加</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">参加者名</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={newParticipantName}
+                  onChange={(e) => setNewParticipantName(e.target.value)}
+                  placeholder="参加者の名前を入力してください"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddParticipant();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  onClick={() => setIsAddParticipantModalOpen(false)}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-blue-600 text-white font-bold hover:bg-blue-700"
+                  onClick={handleAddParticipant}
+                >
+                  追加
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 参加者編集モーダル */}
+      {isEditParticipantModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: '#0000004d' }}>
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-2 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setIsEditParticipantModalOpen(false);
+                setEditingParticipantName("");
+                setEditingParticipantIndex(null);
+              }}
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold mb-4">参加者名を編集</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">参加者名</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={editingParticipantName}
+                  onChange={(e) => setEditingParticipantName(e.target.value)}
+                  placeholder="参加者の名前を入力してください"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleUpdateParticipant();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  onClick={() => {
+                    setIsEditParticipantModalOpen(false);
+                    setEditingParticipantName("");
+                    setEditingParticipantIndex(null);
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-blue-600 text-white font-bold hover:bg-blue-700"
+                  onClick={handleUpdateParticipant}
+                >
+                  更新
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,6 +39,65 @@ query activities {
 		type
 		date
 		time
+		photo_url
+		lat
+		lng
+		place_id
   }
 }
+`;
+
+export const GET_BUDGETS = gql`
+  query GetBudgets($itinerary_id: Int!) {
+    budgets(where: { itinerary_id: { _eq: $itinerary_id } }, order_by: { date: asc, created_at: desc }) {
+      id
+      itinerary_id
+      date
+      activity_id
+      category
+      amount
+      description
+      currency
+      paid_by
+      created_at
+      activity {
+        id
+        name
+        type
+      }
+    }
+  }
+`;
+
+export const GET_BUDGETS_BY_DATE = gql`
+  query GetBudgetsByDate($itinerary_id: Int!, $date: date!) {
+    budgets(where: { itinerary_id: { _eq: $itinerary_id }, date: { _eq: $date } }) {
+      id
+      itinerary_id
+      date
+      activity_id
+      category
+      amount
+      description
+      currency
+      paid_by
+      created_at
+      activity {
+        id
+        name
+        type
+      }
+    }
+  }
+`;
+
+export const GET_ACTIVITIES_BY_DATE = gql`
+  query GetActivitiesByDate($itinerary_id: Int!, $date: date!) {
+    activities(where: { itinerary_id: { _eq: $itinerary_id }, date: { _eq: $date } }) {
+      id
+      name
+      type
+      location
+    }
+  }
 `;
