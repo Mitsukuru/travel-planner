@@ -29,11 +29,8 @@ const defaultCenter = {
   lng: 139.6503 // 東京の経度
 };
 
-interface MapPageProps {
-  selectedDay?: number;
-}
-
-const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
+const MapPage = () => {
+  const selectedDay = 1; // デフォルト値
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
   const [map, setMap] = useState<google.maps.Map | null>(null);

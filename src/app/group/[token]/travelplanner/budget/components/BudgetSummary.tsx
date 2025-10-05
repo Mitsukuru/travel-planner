@@ -170,7 +170,7 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
               <div className="space-y-2">
                 {dailyTotals
                   .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                  .map((day, index) => {
+                  .map((day) => {
                     const maxAmount = Math.max(...dailyTotals.map(d => d.total));
                     const percentage = maxAmount > 0 ? (day.total / maxAmount) * 100 : 0;
                     return (

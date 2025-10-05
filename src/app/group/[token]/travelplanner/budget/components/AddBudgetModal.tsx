@@ -80,7 +80,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
         setFormData(prev => ({ ...prev, dayNumber: diffDays }));
       }
     }
-  }, [defaultDate, startDate?.getTime(), totalDays]);
+  }, [defaultDate, startDate, totalDays]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +92,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
 
     // 選択されたアクティビティのタイプを取得
     const selectedActivity = activitiesData?.activities?.find(
-      (activity: any) => activity.id === parseInt(formData.activityId)
+      (activity: { id: number; type: string }) => activity.id === parseInt(formData.activityId)
     );
     const activityType = selectedActivity?.type || 'other';
 
@@ -197,7 +197,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
               required
             >
               <option value="">アクティビティを選択してください</option>
-              {activitiesData?.activities?.map((activity: any) => {
+              {activitiesData?.activities?.map((activity: { id: number; name: string; type: string }) => {
                 const typeLabel = activity.type 
                   ? (activityTypeLabels[activity.type] || activity.type)
                   : '未分類';
