@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { GoogleMap, useJsApiLoader, Marker, OverlayView, Polyline } from '@react-google-maps/api';
 import { GET_ACTIVITIES } from '@/graphql/queries';
+import Image from 'next/image';
 
 interface Activity {
   id: number;
@@ -237,9 +238,11 @@ const MapPage: React.FC<MapPageProps> = ({ selectedDay = 1 }) => {
                     )}
 
                     {selectedActivity.photo_url && (
-                      <img
+                      <Image
                         src={selectedActivity.photo_url}
                         alt={selectedActivity.name}
+                        width={400}
+                        height={128}
                         className="w-full h-32 object-cover rounded"
                       />
                     )}

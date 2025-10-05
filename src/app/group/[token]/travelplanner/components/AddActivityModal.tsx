@@ -273,7 +273,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             />
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                {suggestions.map((suggestion, index) => {
+                {suggestions.map((suggestion) => {
                   // 場所の種類を判定してアイコンを決定
                   const getPlaceIcon = (types: string[]) => {
                     if (types.includes('transit_station')) return '🚉';

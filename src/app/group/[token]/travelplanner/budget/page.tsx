@@ -53,7 +53,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
       const dateString = targetDate.toISOString().split('T')[0];
       setSelectedDate(dateString);
     }
-  }, [currentItinerary?.start_date, selectedDay]);
+  }, [currentItinerary, selectedDay]);
 
   // 旅の予算をlocalStorageから読み込み
   useEffect(() => {
@@ -93,13 +93,6 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
       }, 0);
   }, [budgets, selectedDate]);
 
-  // 全体の合計金額を計算（メモ化）
-  const totalAmount: number = useMemo(() =>
-    budgets.reduce((sum: number, budget: GraphQLBudget) => {
-      return sum + parseFloat(budget.amount);
-    }, 0),
-    [budgets]
-  );
 
   // 予算残高を計算（メモ化）
   const budgetBalance: number = useMemo(() =>
