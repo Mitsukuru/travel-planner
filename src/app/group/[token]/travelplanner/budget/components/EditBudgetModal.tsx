@@ -140,7 +140,7 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
               onChange={(e) => handleInputChange('activityId', e.target.value)}
             >
               <option value="">アクティビティを選択（任意）</option>
-              {activitiesData?.activities?.map((activity: any) => {
+              {activitiesData?.activities?.map((activity: { id: number; name: string; type: string }) => {
                 const typeLabel = activity.type 
                   ? (activityTypeLabels[activity.type] || activity.type)
                   : '未分類';

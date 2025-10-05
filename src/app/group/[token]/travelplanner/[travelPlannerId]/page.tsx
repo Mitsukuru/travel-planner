@@ -7,13 +7,8 @@ import Image from "next/image";
 import MapPage from "../map/page";
 import BudgetPage from "../budget/page";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
-import { UPDATE_ACTIVITY, DELETE_ACTIVITY } from "@/graphql/mutates";
+import { DELETE_ACTIVITY } from "@/graphql/mutates";
 import {
-  MapPin,
-  ThumbsUp,
-  Clock3,
-  Coffee,
-  Camera,
   Navigation,
   Map as MapIcon,
   Utensils,
@@ -22,12 +17,6 @@ import {
   Globe,
   Clock,
   Users,
-  ChevronRight,
-  ChevronLeft,
-  Star,
-  Tag,
-  Search,
-  Filter,
   Edit2,
   Trash2,
 } from "lucide-react";
@@ -43,13 +32,14 @@ interface TripInfo {
 }
 
 interface Activity {
-  id?: number;
-  time: string;
-  type: string;
+  id: number;
+  itinerary_id: number;
   name: string;
   location: string;
   notes?: string;
-  date:  Date;
+  type: string;
+  date: string;
+  time: string;
   photo_url?: string;
   lat?: number;
   lng?: number;
@@ -61,36 +51,19 @@ interface DayPlan {
   activities: Activity[];
 }
 
-interface Suggestion {
-  type: string;
-  name: string;
-  photo: string;
-  rating: number;
-  distance?: string;
-  price?: string;
-  visitTime?: string;
-  bestTime?: string;
-  description: string;
-  tags?: string[];
-}
 
 export default function TravelPlanner() {
   const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES);
   const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES);
-  const [updateActivity] = useMutation(UPDATE_ACTIVITY);
   const [deleteActivity] = useMutation(DELETE_ACTIVITY);
 
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [recommendationType, setRecommendationType] = useState("nearby");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentActivity] = useState<Activity | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [localActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editingActivityIndex] = useState<number | null>(null);
   const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
   const [participants, setParticipants] = useState(["まさあき", "たまよ", "こうすけ", "るり"]);
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
@@ -99,6 +72,13 @@ export default function TravelPlanner() {
   const [editingParticipantIndex, setEditingParticipantIndex] = useState<number | null>(null);
   const [editingParticipantName, setEditingParticipantName] = useState("");
   
+  // 編集フォームの状態を追加
+  const [editForm, setEditForm] = useState({
+    time: "",
+    name: "",
+    location: "",
+    notes: ""
+  });
 
   if (loading) {
     return (
@@ -161,14 +141,6 @@ export default function TravelPlanner() {
     days: termDay,
   };
 
-  // AIおすすめカテゴリとデータ
-  const aiRecommendationCategories = [
-    { id: "nearby", name: "近くのスポット", icon: <MapPin size={16} /> },
-    { id: "popular", name: "人気スポット", icon: <ThumbsUp size={16} /> },
-    { id: "timeframe", name: "時間帯にぴったり", icon: <Clock3 size={16} /> },
-    { id: "local", name: "地元の穴場", icon: <Coffee size={16} /> },
-    { id: "photo", name: "写真映えスポット", icon: <Camera size={16} /> },
-  ];
 
   // 何日目か計算
   const day = (date: string | Date) => {
@@ -197,12 +169,17 @@ export default function TravelPlanner() {
       if (groupedActivities[d - 1]) {
         groupedActivities[d - 1].activities.push({
           id: activity.id,
+          itinerary_id: activity.itinerary_id,
           time: activity.time,
           type: activity.type,
           name: activity.name,
+          location: activity.location,
           notes: activity.notes,
           date: activity.date,
           photo_url: activity.photo_url,
+          lat: activity.lat,
+          lng: activity.lng,
+          place_id: activity.place_id,
         });
       }
     });
@@ -246,9 +223,7 @@ export default function TravelPlanner() {
   const handleDeleteActivity = async (index: number) => {
     try {
       const selectedDayActivities = activities.find((day) => day.day === selectedDay)?.activities || [];
-      const currentActivity = selectedDayActivities.concat(
-        localActivities.filter(a => day(a.date) === selectedDay)
-      )
+      const currentActivity = selectedDayActivities
       .sort((a, b) => {
         const timeA = a.time.split(':').map(Number);
         const timeB = b.time.split(':').map(Number);
@@ -304,22 +279,6 @@ export default function TravelPlanner() {
     }
   };
 
-  // おすすめ情報の取得（サンプル）
-  const getRecommendations = (): Suggestion[] => {
-    return [
-      {
-        type: "sightseeing",
-        name: "金閣寺",
-        photo: "/images/hawai.jpg",
-        rating: 4.8,
-        distance: "2.5km",
-        price: "¥400",
-        visitTime: "1時間",
-        description: "京都を代表する金色の寺院。美しい庭園と池の景色が魅力。",
-        tags: ["世界遺産", "寺院", "庭園"],
-      },
-    ];
-  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -534,17 +493,17 @@ export default function TravelPlanner() {
           </div>
           {activeTab === "map" ? (
             <div className="flex-1 w-full h-full">
-              <MapPage selectedDay={selectedDay} />
+              <MapPage />
             </div>
           ) : activeTab === "budget" ? (
-            <BudgetPage selectedDay={selectedDay} />
+            <BudgetPage />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}
               <div className="flex-1 overflow-y-auto">
                 <div className="p-4 lg:p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center hidden lg:block">
+                    <div className="hidden lg:flex items-center">
                       <h2 className="text-xl font-bold text-gray-800">
                         {selectedDay}日目
                       </h2>
@@ -558,9 +517,7 @@ export default function TravelPlanner() {
 
                   {/* タイムライン */}
                   <div className="space-y-4 lg:space-y-6">
-                    {activities.find((day) => day.day === selectedDay)?.activities.concat(
-                      localActivities.filter(a => day(a.date) === selectedDay)
-                    )
+                    {activities.find((day) => day.day === selectedDay)?.activities
                     .sort((a, b) => {
                       const timeA = a.time.split(':').map(Number);
                       const timeB = b.time.split(':').map(Number);
@@ -570,7 +527,7 @@ export default function TravelPlanner() {
                       <div key={index} className="flex group">
                         {/* 時間列 */}
                         <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {editingActivity === index ? (
+                          {editingActivityIndex === index ? (
                             <input
                               type="time"
                               value={editForm.time}
@@ -599,10 +556,11 @@ export default function TravelPlanner() {
                             <div className="absolute inset-0 flex">
                               <div className="flex-1"></div>
                               <div className="w-1/2 h-full relative">
-                                <img
+                                <Image
                                   src={activity.photo_url}
                                   alt={activity.name}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';

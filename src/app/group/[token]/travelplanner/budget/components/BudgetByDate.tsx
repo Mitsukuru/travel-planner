@@ -45,9 +45,6 @@ const categoryColors: { [key: string]: string } = {
 const BudgetByDate: React.FC<BudgetByDateProps> = ({
   date,
   budgets,
-  itineraryId,
-  onUpdate,
-  onAddBudget
 }) => {
   const totalAmount = budgets.reduce((sum, budget) => sum + budget.amount, 0);
   const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('ja-JP', {

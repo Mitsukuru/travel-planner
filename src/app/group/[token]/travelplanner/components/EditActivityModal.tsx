@@ -8,11 +8,12 @@ interface EditActivityModalProps {
   onClose: () => void;
   activity: {
     id: number;
+    itinerary_id: number;
     name: string;
     location: string;
-    notes: string;
+    notes?: string;
     type: string;
-    date: Date;
+    date: string;
     time: string;
     photo_url?: string;
     lat?: number;

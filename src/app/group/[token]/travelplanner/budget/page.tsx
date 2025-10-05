@@ -27,11 +27,8 @@ interface GraphQLBudget {
   activity?: Nullable<GraphQLBudgetActivity>;
 }
 
-interface BudgetPageProps {
-  selectedDay?: number;
-}
-
-const BudgetPage: React.FC<BudgetPageProps> = ({ selectedDay = 1 }) => {
+const BudgetPage = () => {
+  const selectedDay = 1; // デフォルト値
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [tripBudget, setTripBudget] = useState<number>(0);
