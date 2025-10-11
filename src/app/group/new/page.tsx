@@ -65,6 +65,17 @@ export default function Group() {
     );
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: フォームデータの送信処理を実装
+    console.log('フォーム送信:', {
+      participants,
+      tripType,
+      selectedPrefectures,
+      selectedCountries
+    });
+  };
+
   return ( 
     <div className="min-h-screen bg-gray-50">
       {/* ヘッダー */}
@@ -93,7 +104,7 @@ export default function Group() {
           </div>
 
           {/* フォーム */}
-          <form className="p-6 space-y-8">
+          <form className="p-6 space-y-8" onSubmit={handleSubmit}>
             {/* グループ名 */}
             <div>
               <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 mb-1">
