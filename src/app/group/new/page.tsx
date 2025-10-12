@@ -3,13 +3,19 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function Group() {
+  const router = useRouter();
   const [participants, setParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
   const [tripType, setTripType] = useState('domestic');
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [groupName, setGroupName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [purposes, setPurposes] = useState<string[]>([]);
 
 
   const prefectures = [
@@ -65,15 +71,56 @@ export default function Group() {
     );
   };
 
+  const handlePurposeChange = (purpose: string) => {
+    setPurposes(prev =>
+      prev.includes(purpose)
+        ? prev.filter(p => p !== purpose)
+        : [...prev, purpose]
+    );
+  };
+
+  const generateGroupToken = () => {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: フォームデータの送信処理を実装
-    console.log('フォーム送信:', {
-      participants,
+
+    // バリデーション
+    if (!groupName.trim()) {
+      alert('グループ名を入力してください');
+      return;
+    }
+    if (!startDate || !endDate) {
+      alert('出発日と帰着日を入力してください');
+      return;
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      alert('帰着日は出発日より後の日付を選択してください');
+      return;
+    }
+
+    // グループトークン生成
+    const token = generateGroupToken();
+
+    // グループデータを作成
+    const groupData = {
+      groupName: groupName.trim(),
       tripType,
-      selectedPrefectures,
-      selectedCountries
-    });
+      destinations: tripType === 'domestic' ? selectedPrefectures : selectedCountries,
+      startDate,
+      endDate,
+      purposes,
+      participants: ['あなた（作成者）', ...participants],
+      createdAt: new Date().toISOString(),
+      token
+    };
+
+    // localStorageに保存
+    localStorage.setItem(`group_${token}`, JSON.stringify(groupData));
+
+    // しおり作成画面に遷移
+    router.push(`/group/${token}/travelplanner/1`);
   };
 
   return ( 
@@ -114,6 +161,8 @@ export default function Group() {
                 type="text"
                 id="groupName"
                 name="groupName"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
                 placeholder="例：フロリダディズニー家族旅行、大学の友人とヨーロッパ卒業旅行"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               />
@@ -204,6 +253,8 @@ export default function Group() {
                   type="date"
                   id="startDate"
                   name="startDate"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -215,6 +266,8 @@ export default function Group() {
                   type="date"
                   id="endDate"
                   name="endDate"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -231,6 +284,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="accommodation"
+                    checked={purposes.includes('accommodation')}
+                    onChange={() => handlePurposeChange('accommodation')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">宿泊場所の雰囲気を楽しみたい</span>
@@ -240,6 +295,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="relaxation"
+                    checked={purposes.includes('relaxation')}
+                    onChange={() => handlePurposeChange('relaxation')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">のんびり過ごす</span>
@@ -249,6 +306,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="newAtmosphere"
+                    checked={purposes.includes('newAtmosphere')}
+                    onChange={() => handlePurposeChange('newAtmosphere')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">日常と違う雰囲気を味わう</span>
@@ -258,6 +317,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="scenery"
+                    checked={purposes.includes('scenery')}
+                    onChange={() => handlePurposeChange('scenery')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">風景・景色を楽しみたい</span>
@@ -267,6 +328,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="refresh"
+                    checked={purposes.includes('refresh')}
+                    onChange={() => handlePurposeChange('refresh')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">リフレッシュ・気分転換したい</span>
@@ -276,6 +339,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="sightseeing"
+                    checked={purposes.includes('sightseeing')}
+                    onChange={() => handlePurposeChange('sightseeing')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">観光地や名所を巡りたい</span>
@@ -285,6 +350,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="food"
+                    checked={purposes.includes('food')}
+                    onChange={() => handlePurposeChange('food')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">旅先の食べ物を堪能したい</span>
@@ -294,6 +361,8 @@ export default function Group() {
                     type="checkbox"
                     name="purpose"
                     value="other"
+                    checked={purposes.includes('other')}
+                    onChange={() => handlePurposeChange('other')}
                     className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">その他</span>
