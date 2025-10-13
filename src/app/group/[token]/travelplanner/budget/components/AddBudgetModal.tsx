@@ -9,10 +9,8 @@ interface AddBudgetModalProps {
   itineraryId: number;
   onBudgetAdded: () => void;
   defaultDate?: string;
+  participants?: string[];
 }
-
-// 参加者リスト（実際のデータに置き換える）
-const participants = ["まさあき", "たまよ", "こうすけ", "るり"];
 
 // アクティビティタイプの日本語マッピング
 const activityTypeLabels: { [key: string]: string } = {
@@ -29,7 +27,8 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   onClose,
   itineraryId,
   onBudgetAdded,
-  defaultDate = ''
+  defaultDate = '',
+  participants = []
 }) => {
   const [formData, setFormData] = useState({
     dayNumber: 1,
@@ -37,7 +36,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     amount: '',
     description: '',
     currency: 'JPY',
-    paidBy: participants[0] // デフォルトで最初の参加者を選択
+    paidBy: participants[0] || '' // デフォルトで最初の参加者を選択
   });
 
   // 旅行プラン情報を取得
@@ -120,7 +119,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
         amount: '',
         description: '',
         currency: 'JPY',
-        paidBy: participants[0]
+        paidBy: participants[0] || ''
       });
     } catch (error) {
       console.error('支出の追加に失敗しました:', error);
@@ -226,11 +225,15 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
               onChange={(e) => handleInputChange('paidBy', e.target.value)}
               required
             >
-              {participants.map((participant) => (
-                <option key={participant} value={participant}>
-                  {participant}
-                </option>
-              ))}
+              {participants.length > 0 ? (
+                participants.map((participant) => (
+                  <option key={participant} value={participant}>
+                    {participant}
+                  </option>
+                ))
+              ) : (
+                <option value="">参加者データがありません</option>
+              )}
             </select>
           </div>
 

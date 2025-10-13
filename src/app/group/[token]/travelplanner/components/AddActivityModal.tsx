@@ -169,7 +169,10 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
             if (place.photos && place.photos.length > 0) {
               // 最初の写真のURLを取得（幅400pxで）
               const photoUrl = place.photos[0].getUrl({ maxWidth: 400 });
-              setPhotoUrl(photoUrl);
+              // Google Maps画像は403エラーが発生するため保存しない
+              if (!photoUrl.includes('maps.googleapis.com')) {
+                setPhotoUrl(photoUrl);
+              }
             }
           }
         }

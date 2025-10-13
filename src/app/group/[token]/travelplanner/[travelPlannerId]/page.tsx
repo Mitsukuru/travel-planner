@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@apollo/client";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import MapPage from "../map/page";
-import BudgetPage from "../budget/page";
+import BudgetContent from "../budget/components/BudgetContent";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
 import { DELETE_ACTIVITY } from "@/graphql/mutates";
 import {
@@ -22,6 +23,18 @@ import {
 } from "lucide-react";
 import AddActivityModal from "../components/AddActivityModal";
 import EditActivityModal from "../components/EditActivityModal";
+
+interface GroupData {
+  groupName: string;
+  tripType: string;
+  destinations: string[];
+  startDate: string;
+  endDate: string;
+  purposes: string[];
+  participants: string[];
+  createdAt: string;
+  token: string;
+}
 
 interface TripInfo {
   destination: string;
@@ -53,34 +66,68 @@ interface DayPlan {
 
 
 export default function TravelPlanner() {
-  const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES);
-  const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES);
+  const params = useParams();
+  const groupToken = params.token as string;
+
+  const [groupData, setGroupData] = useState<GroupData | null>(null);
+  const [isNewGroup, setIsNewGroup] = useState(false);
+
+  // Only run GraphQL queries for existing groups, not new groups from localStorage
+  const shouldSkipQueries = Boolean(isNewGroup && groupData);
+
+  const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES, {
+    skip: shouldSkipQueries
+  });
+  const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES, {
+    skip: shouldSkipQueries
+  });
   const [deleteActivity] = useMutation(DELETE_ACTIVITY);
 
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [localActivities, setLocalActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
-  const [editingActivityIndex] = useState<number | null>(null);
   const [selectedDateForModal, setSelectedDateForModal] = useState<string>("");
-  const [participants, setParticipants] = useState(["まさあき", "たまよ", "こうすけ", "るり"]);
+  const [participants, setParticipants] = useState<string[]>([]);
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState("");
   const [isEditParticipantModalOpen, setIsEditParticipantModalOpen] = useState(false);
   const [editingParticipantIndex, setEditingParticipantIndex] = useState<number | null>(null);
   const [editingParticipantName, setEditingParticipantName] = useState("");
-  
-  // 編集フォームの状態を追加
-  const [editForm, setEditForm] = useState({
-    time: "",
-    name: "",
-    location: "",
-    notes: ""
-  });
 
-  if (loading) {
+  // Load group data from localStorage if it's a new group
+  useEffect(() => {
+    if (groupToken) {
+      const storedGroupData = localStorage.getItem(`group_${groupToken}`);
+      if (storedGroupData) {
+        const parsed = JSON.parse(storedGroupData);
+        setGroupData(parsed);
+        setIsNewGroup(true);
+        setParticipants(parsed.participants);
+      } else {
+        setIsNewGroup(false);
+      }
+    }
+  }, [groupToken]);
+
+  // Load activities from localStorage for new groups
+  useEffect(() => {
+    if (isNewGroup && groupToken) {
+      const storedActivities = localStorage.getItem(`activities_${groupToken}`);
+      if (storedActivities) {
+        const activities = JSON.parse(storedActivities);
+        console.log("Loading activities from localStorage:", activities.length, activities);
+        setLocalActivities(activities);
+      }
+    }
+  }, [isNewGroup, groupToken]);
+
+
+
+  if (loading && !isNewGroup) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -91,7 +138,7 @@ export default function TravelPlanner() {
     );
   }
 
-  if (error) {
+  if (error && !isNewGroup) {
     console.error("GraphQL Error Details:", error);
     return (
       <div className="flex items-center justify-center h-screen">
@@ -108,38 +155,74 @@ export default function TravelPlanner() {
     );
   }
 
-  if (!itinerariesData?.itineraries?.[0]) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2">
-            旅行プランが見つかりませんでした
-          </h2>
-          <p className="text-gray-600 mb-4">
-            指定されたトークンに対応する旅行プランは存在しません。
-          </p>
-          <p>
-            <Link href="/group" className="text-blue-600 hover:underline">
-              グループ一覧に戻る
-            </Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const travelPlan = itinerariesData.itineraries[0];
-  const startDate: Date = new Date(travelPlan.start_date);
-  const endDate: Date = new Date(travelPlan.end_date);
-  const termDay = Math.ceil((endDate.getTime() - startDate.getTime() + 1) / 86400000);
-
-  const tripInfo: TripInfo = {
-    destination: travelPlan.destination,
-    startDate: travelPlan.start_date,
-    endDate: travelPlan.end_date,
-    participants: participants,
-    days: termDay,
+  // Handle both new groups (from localStorage) and existing groups (from GraphQL)
+  let tripInfo: TripInfo;
+  let startDate: Date;
+  let endDate: Date;
+  let termDay: number;
+  let travelPlan: {
+    id: number;
+    destination: string;
+    start_date: string;
+    end_date: string;
   };
+
+  if (isNewGroup && groupData) {
+    // For new groups, use localStorage data
+    startDate = new Date(groupData.startDate);
+    endDate = new Date(groupData.endDate);
+    termDay = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    tripInfo = {
+      destination: groupData.destinations[0] || "目的地",
+      startDate: groupData.startDate,
+      endDate: groupData.endDate,
+      participants: participants,
+      days: termDay,
+    };
+
+    // Create a mock travelPlan object for compatibility
+    travelPlan = {
+      id: 1, // dummy ID for new groups
+      destination: tripInfo.destination,
+      start_date: tripInfo.startDate,
+      end_date: tripInfo.endDate,
+    };
+  } else {
+    // For existing groups, use GraphQL data
+    if (!itinerariesData?.itineraries?.[0]) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">
+              旅行プランが見つかりませんでした
+            </h2>
+            <p className="text-gray-600 mb-4">
+              指定されたトークンに対応する旅行プランは存在しません。
+            </p>
+            <p>
+              <Link href="/group" className="text-blue-600 hover:underline">
+                グループ一覧に戻る
+              </Link>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    travelPlan = itinerariesData.itineraries[0];
+    startDate = new Date(travelPlan.start_date);
+    endDate = new Date(travelPlan.end_date);
+    termDay = Math.ceil((endDate.getTime() - startDate.getTime() + 1) / 86400000);
+
+    tripInfo = {
+      destination: travelPlan.destination,
+      startDate: travelPlan.start_date,
+      endDate: travelPlan.end_date,
+      participants: participants,
+      days: termDay,
+    };
+  }
 
 
   // 何日目か計算
@@ -163,29 +246,46 @@ export default function TravelPlanner() {
     activities: [],
   }));
 
-  if (activitiesData?.activities) {
-    activitiesData.activities.forEach((activity: Activity) => {
-      const d = day(activity.date);
-      if (groupedActivities[d - 1]) {
-        groupedActivities[d - 1].activities.push({
-          id: activity.id,
-          itinerary_id: activity.itinerary_id,
-          time: activity.time,
-          type: activity.type,
-          name: activity.name,
-          location: activity.location,
-          notes: activity.notes,
-          date: activity.date,
-          photo_url: activity.photo_url,
-          lat: activity.lat,
-          lng: activity.lng,
-          place_id: activity.place_id,
-        });
-      }
-    });
-  }
+  // Load activities for existing groups from GraphQL, for new groups from localStorage
+  const activitiesToProcess = isNewGroup ? localActivities : (activitiesData?.activities || []);
+  console.log("Activities to process:", activitiesToProcess.length, activitiesToProcess);
+
+  activitiesToProcess.forEach((activity: Activity) => {
+    const d = day(activity.date);
+    if (groupedActivities[d - 1]) {
+      groupedActivities[d - 1].activities.push({
+        id: activity.id,
+        itinerary_id: activity.itinerary_id || travelPlan.id,
+        time: activity.time,
+        type: activity.type,
+        name: activity.name,
+        notes: activity.notes,
+        date: activity.date,
+        photo_url: activity.photo_url && !activity.photo_url.includes('maps.googleapis.com') ? activity.photo_url : undefined,
+        location: activity.location,
+        lat: activity.lat,
+        lng: activity.lng,
+        place_id: activity.place_id,
+      });
+    }
+  });
 
   const activities: DayPlan[] = groupedActivities;
+
+  // 目的コードを日本語ラベルに変換
+  const getPurposeLabel = (purpose: string) => {
+    const purposeMap: { [key: string]: string } = {
+      'accommodation': '宿泊場所の雰囲気を楽しみたい',
+      'relaxation': 'のんびり過ごす',
+      'newAtmosphere': '日常と違う雰囲気を味わう',
+      'scenery': '風景・景色を楽しみたい',
+      'refresh': 'リフレッシュ・気分転換したい',
+      'sightseeing': '観光地や名所を巡りたい',
+      'food': '旅先の食べ物を堪能したい',
+      'other': 'その他'
+    };
+    return purposeMap[purpose] || purpose;
+  };
 
   // アクティビティタイプに応じたアイコン取得
   const getActivityIcon = (type: string) => {
@@ -249,7 +349,19 @@ export default function TravelPlanner() {
   // 参加者追加の処理
   const handleAddParticipant = () => {
     if (newParticipantName.trim()) {
-      setParticipants([...participants, newParticipantName.trim()]);
+      const updatedParticipants = [...participants, newParticipantName.trim()];
+      setParticipants(updatedParticipants);
+
+      // 新しいグループの場合はlocalStorageも更新
+      if (isNewGroup && groupData && groupToken) {
+        const updatedGroupData = {
+          ...groupData,
+          participants: updatedParticipants
+        };
+        localStorage.setItem(`group_${groupToken}`, JSON.stringify(updatedGroupData));
+        setGroupData(updatedGroupData);
+      }
+
       setNewParticipantName("");
       setIsAddParticipantModalOpen(false);
     }
@@ -257,7 +369,18 @@ export default function TravelPlanner() {
 
   // 参加者削除の処理
   const handleRemoveParticipant = (index: number) => {
-    setParticipants(participants.filter((_, i) => i !== index));
+    const updatedParticipants = participants.filter((_, i) => i !== index);
+    setParticipants(updatedParticipants);
+
+    // 新しいグループの場合はlocalStorageも更新
+    if (isNewGroup && groupData && groupToken) {
+      const updatedGroupData = {
+        ...groupData,
+        participants: updatedParticipants
+      };
+      localStorage.setItem(`group_${groupToken}`, JSON.stringify(updatedGroupData));
+      setGroupData(updatedGroupData);
+    }
   };
 
   // 参加者編集開始の処理
@@ -273,6 +396,17 @@ export default function TravelPlanner() {
       const updatedParticipants = [...participants];
       updatedParticipants[editingParticipantIndex] = editingParticipantName.trim();
       setParticipants(updatedParticipants);
+
+      // 新しいグループの場合はlocalStorageも更新
+      if (isNewGroup && groupData && groupToken) {
+        const updatedGroupData = {
+          ...groupData,
+          participants: updatedParticipants
+        };
+        localStorage.setItem(`group_${groupToken}`, JSON.stringify(updatedGroupData));
+        setGroupData(updatedGroupData);
+      }
+
       setEditingParticipantName("");
       setEditingParticipantIndex(null);
       setIsEditParticipantModalOpen(false);
@@ -379,6 +513,20 @@ export default function TravelPlanner() {
               <div className="absolute inset-0 bg-black bg-opacity-25" onClick={() => setIsMobileParticipantsOpen(false)} />
               <div className="absolute top-[64px] right-4 w-64 bg-white border border-gray-200 shadow-lg rounded-lg">
                 <div className="p-4">
+                  {/* グループ情報 */}
+                  {isNewGroup && groupData && (
+                    <div className="mb-4 pb-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-700 mb-2">旅の目的</h3>
+                      <div className="space-y-1">
+                        {groupData.purposes.map((purpose: string, index: number) => (
+                          <div key={index} className="text-xs text-gray-600 bg-blue-50 rounded px-2 py-1">
+                            {getPurposeLabel(purpose)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <h3 className="font-semibold text-gray-700 mb-2">参加者</h3>
                   <div className="space-y-2">
                     {tripInfo.participants.map((person, index) => (
@@ -496,7 +644,7 @@ export default function TravelPlanner() {
               <MapPage />
             </div>
           ) : activeTab === "budget" ? (
-            <BudgetPage />
+            <BudgetContent participants={participants} />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}
@@ -527,16 +675,7 @@ export default function TravelPlanner() {
                       <div key={index} className="flex group">
                         {/* 時間列 */}
                         <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {editingActivityIndex === index ? (
-                            <input
-                              type="time"
-                              value={editForm.time}
-                              onChange={(e) => setEditForm({...editForm, time: e.target.value})}
-                              className="w-full text-sm border border-gray-300 rounded px-1 py-1"
-                            />
-                          ) : (
-                            formatTime(activity.time)
-                          )}
+                          {formatTime(activity.time)}
                         </div>
 
                         {/* タイムラインの縦線 */}
@@ -551,8 +690,8 @@ export default function TravelPlanner() {
 
                         {/* 内容 */}
                         <div className="ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
-                          {/* 背景画像 */}
-                          {activity.photo_url && (
+                          {/* 背景画像 - Google Maps画像は403エラーのため除外 */}
+                          {activity.photo_url && !activity.photo_url.includes('maps.googleapis.com') && (
                             <div className="absolute inset-0 flex">
                               <div className="flex-1"></div>
                               <div className="w-1/2 h-full relative">
