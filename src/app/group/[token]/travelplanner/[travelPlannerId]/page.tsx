@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "@apollo/client";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import MapPage from "../map/page";
+import MapContent from "../map/components/MapContent";
 import BudgetContent from "../budget/components/BudgetContent";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
 import { DELETE_ACTIVITY } from "@/graphql/mutates";
@@ -641,7 +641,12 @@ export default function TravelPlanner() {
           </div>
           {activeTab === "map" ? (
             <div className="flex-1 w-full h-full">
-              <MapPage />
+              <MapContent
+                selectedDay={selectedDay}
+                groupToken={groupToken}
+                isNewGroup={isNewGroup}
+                groupData={groupData}
+              />
             </div>
           ) : activeTab === "budget" ? (
             <BudgetContent participants={participants} />
