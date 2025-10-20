@@ -1,3 +1,10 @@
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255)
+);
+
 -- Create groups table
 CREATE TABLE IF NOT EXISTS groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -6,19 +13,29 @@ CREATE TABLE IF NOT EXISTS groups (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create group_members table
+CREATE TABLE IF NOT EXISTS group_members (
+    id SERIAL PRIMARY KEY,
+    group_id UUID,
+    user_id INTEGER,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Create itineraries table
 CREATE TABLE IF NOT EXISTS itineraries (
     id SERIAL PRIMARY KEY,
     group_id UUID,
-    title VARCHAR(255),
+    title VARCHAR(255) NOT NULL,
     destination VARCHAR(255),
     start_date DATE,
     end_date DATE,
     travel_purpose TEXT,
     location_type VARCHAR(100),
-    created_by VARCHAR(255),
+    created_by INTEGER,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Create activities table
