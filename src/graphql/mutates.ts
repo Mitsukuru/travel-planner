@@ -182,7 +182,7 @@ export const INSERT_GROUP = gql`
   mutation InsertGroup(
     $name: String!
   ) {
-    insert_group(
+    insert_groups(
       objects: {
         name: $name
       }

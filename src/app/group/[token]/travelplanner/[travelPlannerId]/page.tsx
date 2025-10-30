@@ -138,7 +138,7 @@ export default function TravelPlanner() {
               name: groupData.groupName || 'New Group',
             }
           });
-          const newGroupId = result.data?.insert_group?.returning?.[0]?.id;
+          const newGroupId = result.data?.insert_groups?.returning?.[0]?.id;
           console.log('Group created with UUID:', newGroupId);
           setCreatedGroupId(newGroupId);
 
