@@ -207,7 +207,7 @@ export const INSERT_ITINERARY = gql`
     $end_date: date!
     $travel_purpose: [String!]
     $location_type: String!
-    $created_by: timestamptz
+    $created_by: Int
   ) {
     insert_itineraries(
       objects: {
