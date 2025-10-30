@@ -91,7 +91,6 @@ export default function TravelPlanner() {
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [localActivities, setLocalActivities] = useState<Activity[]>([]);
   const [isMobileParticipantsOpen, setIsMobileParticipantsOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -127,18 +126,6 @@ export default function TravelPlanner() {
       }
     }
   }, [groupToken]);
-
-  // Load activities from localStorage for new groups
-  useEffect(() => {
-    if (isNewGroup && groupToken) {
-      const storedActivities = localStorage.getItem(`activities_${groupToken}`);
-      if (storedActivities) {
-        const activities = JSON.parse(storedActivities);
-        console.log("Loading activities from localStorage:", activities.length, activities);
-        setLocalActivities(activities);
-      }
-    }
-  }, [isNewGroup, groupToken]);
 
   // Create group in database for new groups
   useEffect(() => {
