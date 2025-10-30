@@ -29,9 +29,16 @@ interface GraphQLBudget {
 
 interface BudgetContentProps {
   participants?: string[];
+  itinerary_id?: number;
+  itinerary?: {
+    id: number;
+    start_date: string;
+    end_date: string;
+    destination: string;
+  };
 }
 
-const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [] }) => {
+const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itinerary_id, itinerary }) => {
   const selectedDay = 1; // デフォルト値
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -39,11 +46,14 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [] }) => {
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [editBudgetValue, setEditBudgetValue] = useState<string>('');
 
-  const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES);
+  // propsでitinerary_idが渡されている場合はそれを使用、なければ全itinerariesを取得
+  const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES, {
+    skip: Boolean(itinerary_id && itinerary)
+  });
 
-  // 最初の旅行プランを自動選択
-  const currentItinerary = itinerariesData?.itineraries?.[0];
-  const itineraryId = currentItinerary?.id;
+  // propsから渡されたitineraryを優先、なければ最初のitineraryを使用
+  const currentItinerary = itinerary || itinerariesData?.itineraries?.[0];
+  const itineraryId = itinerary_id || currentItinerary?.id;
 
   // 選択された日の日付を計算してstateを更新
   useEffect(() => {

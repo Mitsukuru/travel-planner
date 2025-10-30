@@ -8,7 +8,8 @@ import Image from "next/image";
 import MapContent from "../map/components/MapContent";
 import BudgetContent from "../budget/components/BudgetContent";
 import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
-import { DELETE_ACTIVITY } from "@/graphql/mutates";
+import { DELETE_ACTIVITY, INSERT_ITINERARY, INSERT_GROUP } from "@/graphql/mutates";
+import { GoogleMapsProvider } from "@/components/GoogleMapsProvider";
 import {
   Navigation,
   Map as MapIcon,
@@ -71,9 +72,11 @@ export default function TravelPlanner() {
 
   const [groupData, setGroupData] = useState<GroupData | null>(null);
   const [isNewGroup, setIsNewGroup] = useState(false);
+  const [createdItineraryId, setCreatedItineraryId] = useState<number | null>(null);
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
 
-  // Only run GraphQL queries for existing groups, not new groups from localStorage
-  const shouldSkipQueries = Boolean(isNewGroup && groupData);
+  // Only run GraphQL queries for existing groups, or for new groups after itinerary is created
+  const shouldSkipQueries = Boolean(isNewGroup && groupData && !createdItineraryId);
 
   const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES, {
     skip: shouldSkipQueries
@@ -82,6 +85,8 @@ export default function TravelPlanner() {
     skip: shouldSkipQueries
   });
   const [deleteActivity] = useMutation(DELETE_ACTIVITY);
+  const [insertItinerary] = useMutation(INSERT_ITINERARY);
+  const [insertGroup] = useMutation(INSERT_GROUP);
 
   const [activeTab, setActiveTab] = useState("plan");
   const [selectedDay, setSelectedDay] = useState(1);
@@ -107,6 +112,16 @@ export default function TravelPlanner() {
         setGroupData(parsed);
         setIsNewGroup(true);
         setParticipants(parsed.participants);
+
+        // 既に作成済みのIDがあればそれを使用
+        if (parsed.createdGroupId) {
+          console.log('Using existing group ID:', parsed.createdGroupId);
+          setCreatedGroupId(parsed.createdGroupId);
+        }
+        if (parsed.createdItineraryId) {
+          console.log('Using existing itinerary ID:', parsed.createdItineraryId);
+          setCreatedItineraryId(parsed.createdItineraryId);
+        }
       } else {
         setIsNewGroup(false);
       }
@@ -125,6 +140,68 @@ export default function TravelPlanner() {
     }
   }, [isNewGroup, groupToken]);
 
+  // Create group in database for new groups
+  useEffect(() => {
+    const createGroup = async () => {
+      if (isNewGroup && groupData && !createdGroupId && groupToken) {
+        try {
+          console.log('Creating group in database:', groupData);
+          const result = await insertGroup({
+            variables: {
+              name: groupData.groupName || 'New Group',
+            }
+          });
+          const newGroupId = result.data?.insert_group?.returning?.[0]?.id;
+          console.log('Group created with UUID:', newGroupId);
+          setCreatedGroupId(newGroupId);
+
+          // localStorageに保存
+          const updatedGroupData = { ...groupData, createdGroupId: newGroupId };
+          localStorage.setItem(`group_${groupToken}`, JSON.stringify(updatedGroupData));
+          setGroupData(updatedGroupData);
+        } catch (error) {
+          console.error('Error creating group:', error);
+          alert('グループの作成に失敗しました: ' + (error instanceof Error ? error.message : String(error)));
+        }
+      }
+    };
+    createGroup();
+  }, [isNewGroup, groupData, createdGroupId, groupToken, insertGroup]);
+
+  // Create itinerary in database after group is created
+  useEffect(() => {
+    const createItinerary = async () => {
+      if (isNewGroup && groupData && createdGroupId && !createdItineraryId && groupToken) {
+        try {
+          console.log('Creating itinerary for group:', createdGroupId);
+          const result = await insertItinerary({
+            variables: {
+              group_id: createdGroupId,
+              title: groupData.groupName || 'New Trip',
+              destination: groupData.destinations || [],
+              start_date: groupData.startDate,
+              end_date: groupData.endDate,
+              travel_purpose: groupData.purposes || [],
+              location_type: groupData.tripType,
+              created_by: new Date().toISOString(),
+            }
+          });
+          const newItineraryId = result.data?.insert_itineraries?.returning?.[0]?.id;
+          console.log('Itinerary created with ID:', newItineraryId);
+          setCreatedItineraryId(newItineraryId);
+
+          // localStorageに保存
+          const updatedGroupData = { ...groupData, createdGroupId, createdItineraryId: newItineraryId };
+          localStorage.setItem(`group_${groupToken}`, JSON.stringify(updatedGroupData));
+          setGroupData(updatedGroupData);
+        } catch (error) {
+          console.error('Error creating itinerary:', error);
+          alert('旅行プランの作成に失敗しました: ' + (error instanceof Error ? error.message : String(error)));
+        }
+      }
+    };
+    createItinerary();
+  }, [isNewGroup, groupData, createdGroupId, createdItineraryId, groupToken, insertItinerary]);
 
 
   if (loading && !isNewGroup) {
@@ -181,9 +258,20 @@ export default function TravelPlanner() {
       days: termDay,
     };
 
-    // Create a mock travelPlan object for compatibility
+    // Use the created itinerary ID or show loading state
+    if (!createdItineraryId) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4 mx-auto"></div>
+            <p>旅行プランを作成中...</p>
+          </div>
+        </div>
+      );
+    }
+
     travelPlan = {
-      id: 1, // dummy ID for new groups
+      id: createdItineraryId,
       destination: tripInfo.destination,
       start_date: tripInfo.startDate,
       end_date: tripInfo.endDate,
@@ -246,9 +334,12 @@ export default function TravelPlanner() {
     activities: [],
   }));
 
-  // Load activities for existing groups from GraphQL, for new groups from localStorage
-  const activitiesToProcess = isNewGroup ? localActivities : (activitiesData?.activities || []);
-  console.log("Activities to process:", activitiesToProcess.length, activitiesToProcess);
+  // Load activities from GraphQL (filtered by itinerary_id)
+  const allActivities = activitiesData?.activities || [];
+  const activitiesToProcess = allActivities.filter((activity: Activity) =>
+    activity.itinerary_id === travelPlan.id
+  );
+  console.log("Activities to process:", activitiesToProcess.length, "Total activities:", allActivities.length, "Itinerary ID:", travelPlan.id);
 
   activitiesToProcess.forEach((activity: Activity) => {
     const d = day(activity.date);
@@ -415,6 +506,7 @@ export default function TravelPlanner() {
 
 
   return (
+    <GoogleMapsProvider>
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
       <nav className="bg-white border-b border-gray-200">
@@ -649,7 +741,16 @@ export default function TravelPlanner() {
               />
             </div>
           ) : activeTab === "budget" ? (
-            <BudgetContent participants={participants} />
+            <BudgetContent
+              participants={participants}
+              itinerary_id={travelPlan.id}
+              itinerary={{
+                id: travelPlan.id,
+                start_date: travelPlan.start_date,
+                end_date: travelPlan.end_date,
+                destination: travelPlan.destination,
+              }}
+            />
           ) : (
             <>
               {/* メインエリア：日程詳細 */}
@@ -790,7 +891,10 @@ export default function TravelPlanner() {
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
         defaultDate={selectedDateForModal || travelPlan.start_date}
-        onActivityAdded={refetchActivities}
+        onActivityAdded={() => {
+          console.log('Refetching activities...');
+          refetchActivities();
+        }}
       />
       <EditActivityModal
         isOpen={editModalOpen}
@@ -906,5 +1010,6 @@ export default function TravelPlanner() {
         </div>
       )}
     </div>
+    </GoogleMapsProvider>
   );
 }

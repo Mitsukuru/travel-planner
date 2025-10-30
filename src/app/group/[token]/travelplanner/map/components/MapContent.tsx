@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GoogleMap, useJsApiLoader, Marker, OverlayView, Polyline } from '@react-google-maps/api';
+import { GoogleMap, Marker, OverlayView, Polyline } from '@react-google-maps/api';
 import { GET_ACTIVITIES } from '@/graphql/queries';
 import Image from 'next/image';
+import { useGoogleMaps } from '@/components/GoogleMapsProvider';
 
 interface Activity {
   id: number;
@@ -108,11 +109,7 @@ const MapContent: React.FC<MapContentProps> = ({
     }
   }, [activitiesData, localActivities, isNewGroup, groupData]);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
-    libraries: ['places']
-  });
+  const { isLoaded } = useGoogleMaps();
 
   const onLoad = useCallback((mapInstance: google.maps.Map) => {
     setMap(mapInstance);

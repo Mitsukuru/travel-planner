@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useMutation } from "@apollo/client";
-import { useJsApiLoader } from "@react-google-maps/api";
 import { INSERT_ACTIVITIES } from "@/graphql/mutates";
+import { useGoogleMaps } from "@/components/GoogleMapsProvider";
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -37,11 +37,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
-    libraries: ['places']
-  });
+  const { isLoaded } = useGoogleMaps();
 
   useEffect(() => {
     // Google Maps APIが利用可能になったら初期化
@@ -183,7 +179,21 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertActivity({
+      console.log('Submitting activity with data:', {
+        itinerary_id,
+        date,
+        time,
+        location,
+        name: location,
+        notes,
+        type,
+        photo_url: photoUrl,
+        lat,
+        lng,
+        place_id: placeId,
+      });
+
+      const result = await insertActivity({
         variables: {
           itinerary_id,
           date,
@@ -198,6 +208,9 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
           place_id: placeId,
         },
       });
+
+      console.log('Activity insertion result:', result);
+
       // フォームをリセット
       setTime("");
       setLocation("");
@@ -215,7 +228,8 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       }
       onClose();
     } catch (e) {
-      console.error(e);
+      console.error('Error inserting activity:', e);
+      alert('アクティビティの追加に失敗しました: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
