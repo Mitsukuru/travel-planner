@@ -170,7 +170,7 @@ export default function TravelPlanner() {
               end_date: groupData.endDate,
               travel_purpose: groupData.purposes || [],
               location_type: groupData.tripType,
-              created_by: new Date().toISOString(),
+              created_by: null,
             }
           });
           const newItineraryId = result.data?.insert_itineraries?.returning?.[0]?.id;
