@@ -352,7 +352,7 @@ export default function TravelPlanner() {
         name: activity.name,
         notes: activity.notes,
         date: activity.date,
-        photo_url: activity.photo_url && !activity.photo_url.includes('maps.googleapis.com') ? activity.photo_url : undefined,
+        photo_url: activity.photo_url,
         location: activity.location,
         lat: activity.lat,
         lng: activity.lng,
@@ -778,42 +778,65 @@ export default function TravelPlanner() {
                       return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
                     })
                     .map((activity, index) => (
-                      <div key={index} className="flex group">
-                        {/* 時間列 */}
-                        <div className="w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
-                          {formatTime(activity.time)}
+                      <div key={index} className="group">
+                        {/* モバイル: 時間を上に表示 */}
+                        <div className="lg:hidden flex items-center mb-2 ml-6">
+                          <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
+                          <span className="text-sm text-gray-500 font-medium">
+                            {formatTime(activity.time)}
+                          </span>
                         </div>
 
-                        {/* タイムラインの縦線 */}
-                        <div className="relative flex flex-col items-center">
-                          <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
-                          {index <
-                            (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
-                            1 && (
-                            <div className="w-px bg-gray-300 h-full"></div>
-                          )}
-                        </div>
+                        {/* デスクトップ: 従来のレイアウト */}
+                        <div className="flex">
+                          {/* 時間列（デスクトップのみ） */}
+                          <div className="hidden lg:block w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
+                            {formatTime(activity.time)}
+                          </div>
 
-                        {/* 内容 */}
-                        <div className="ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
-                          {/* 背景画像 - Google Maps画像は403エラーのため除外 */}
-                          {activity.photo_url && !activity.photo_url.includes('maps.googleapis.com') && (
-                            <div className="absolute inset-0 flex">
-                              <div className="flex-1"></div>
-                              <div className="w-1/2 h-full relative">
-                                <Image
-                                  src={activity.photo_url}
-                                  alt={activity.name}
-                                  fill
-                                  className="object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
+                          {/* タイムラインの縦線（デスクトップのみ） */}
+                          <div className="hidden lg:flex relative flex-col items-center">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
+                            {index <
+                              (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
+                              1 && (
+                              <div className="w-px bg-gray-300 h-full"></div>
+                            )}
+                          </div>
+
+                          {/* モバイル用の縦線 */}
+                          <div className="lg:hidden relative flex flex-col items-center ml-6 mr-3">
+                            {index <
+                              (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
+                              1 && (
+                              <div className="w-px bg-gray-300 h-full"></div>
+                            )}
+                          </div>
+
+                          {/* 内容 */}
+                          <div className="lg:ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
+                          {/* 背景画像 */}
+                          {activity.photo_url && (
+                            <>
+                              {console.log('Rendering image for activity:', activity.name, 'URL:', activity.photo_url)}
+                              <div className="absolute inset-0 flex">
+                                <div className="flex-1"></div>
+                                <div className="w-1/2 h-full relative">
+                                  <Image
+                                    src={activity.photo_url}
+                                    alt={activity.name}
+                                    fill
+                                    className="object-cover"
+                                    onError={(e) => {
+                                      console.error('Image load error for:', activity.photo_url);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
+                                </div>
                               </div>
-                            </div>
+                            </>
                           )}
                           <div className="relative z-10 p-4">
                             <div className="flex justify-between items-center">
@@ -853,17 +876,18 @@ export default function TravelPlanner() {
                             </div>
                           </div>
                         </div>
+                        </div>
                       </div>
                     ))}
 
                     {/* アクティビティ追加ボタン */}
                     <div className="flex">
-                      <div className="w-20"></div>
-                      <div className="relative flex flex-col items-center">
+                      <div className="hidden lg:block w-20"></div>
+                      <div className="relative flex flex-col items-center lg:ml-0 ml-6">
                         <div className="w-3 h-3 rounded-full bg-gray-300"></div>
                       </div>
                       <button
-                        className="ml-4 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="lg:ml-4 ml-3 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
                         onClick={() => {
                           // 現在選択されている日の実際の日付を計算
                           const selectedDate = new Date(startDate);

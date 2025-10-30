@@ -296,13 +296,18 @@ const MapContent: React.FC<MapContentProps> = ({
                       <p className="text-sm text-gray-700 mb-3">{selectedActivity.notes}</p>
                     )}
 
-                    {selectedActivity.photo_url && !selectedActivity.photo_url.includes('maps.googleapis.com') && (
+                    {selectedActivity.photo_url && (
                       <Image
                         src={selectedActivity.photo_url}
                         alt={selectedActivity.name}
                         width={400}
                         height={128}
                         className="w-full h-32 object-cover rounded"
+                        onError={(e) => {
+                          console.error('Image load error in map:', selectedActivity.photo_url);
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
                       />
                     )}
                   </div>
