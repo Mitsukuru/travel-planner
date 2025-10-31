@@ -9,6 +9,8 @@ interface AddActivityModalProps {
   itinerary_id: number;
   defaultDate?: string;
   onActivityAdded?: () => void;
+  startDate?: string;
+  endDate?: string;
 }
 
 const typeOptions = [
@@ -20,7 +22,7 @@ const typeOptions = [
   { label: "エリア", value: "area" },
 ];
 
-const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, itinerary_id, defaultDate, onActivityAdded }) => {
+const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, itinerary_id, defaultDate, onActivityAdded, startDate, endDate }) => {
   const [date, setDate] = useState(defaultDate || "");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
@@ -55,6 +57,40 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       setDate(defaultDate);
     }
   }, [defaultDate]);
+
+  // 旅行期間の日付リストを生成
+  const generateDateOptions = () => {
+    if (!startDate || !endDate) return [];
+
+    const dates: { value: string; label: string; dayNumber: number }[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    let currentDate = new Date(start);
+    let dayNumber = 1;
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const formattedDate = new Intl.DateTimeFormat('ja-JP', {
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short'
+      }).format(currentDate);
+
+      dates.push({
+        value: dateStr,
+        label: `${dayNumber}日目 - ${formattedDate}`,
+        dayNumber: dayNumber
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+      dayNumber++;
+    }
+
+    return dates;
+  };
+
+  const dateOptions = generateDateOptions();
 
   const handleLocationChange = (value: string) => {
     setLocation(value);
@@ -256,13 +292,29 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">日付</label>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              required
-            />
+            {dateOptions.length > 0 ? (
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+              >
+                <option value="">日付を選択してください</option>
+                {dateOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="date"
+                className="w-full border rounded px-3 py-2"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">時間</label>

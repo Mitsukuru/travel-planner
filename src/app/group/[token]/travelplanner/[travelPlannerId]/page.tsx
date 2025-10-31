@@ -902,6 +902,8 @@ export default function TravelPlanner() {
         onClose={() => setAddModalOpen(false)}
         itinerary_id={travelPlan.id}
         defaultDate={selectedDateForModal || travelPlan.start_date}
+        startDate={travelPlan.start_date}
+        endDate={travelPlan.end_date}
         onActivityAdded={() => {
           console.log('Refetching activities...');
           refetchActivities();
