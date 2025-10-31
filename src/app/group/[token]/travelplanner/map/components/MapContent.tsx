@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GoogleMap, Marker, OverlayView, Polyline } from '@react-google-maps/api';
+import { GoogleMap, Marker, OverlayView } from '@react-google-maps/api';
 import { GET_ACTIVITIES } from '@/graphql/queries';
 import Image from 'next/image';
 import { useGoogleMaps } from '@/components/GoogleMapsProvider';
@@ -37,6 +37,7 @@ interface MapContentProps {
   groupToken?: string;
   isNewGroup?: boolean;
   groupData?: GroupData | null;
+  itinerary_id?: number;
 }
 
 const containerStyle = {
@@ -53,16 +54,20 @@ const MapContent: React.FC<MapContentProps> = ({
   selectedDay = 1,
   groupToken,
   isNewGroup = false,
-  groupData
+  groupData,
+  itinerary_id
 }) => {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
   const [localActivities, setLocalActivities] = useState<Activity[]>([]);
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
-  // GraphQLクエリは既存のグループのみ実行
-  const shouldSkipQueries = Boolean(isNewGroup && groupToken);
+  // itinerary_idがある場合は常にクエリを実行
+  // itinerary_idがない場合のみスキップ
+  const shouldSkipQueries = !itinerary_id;
+
   const { data: activitiesData, loading, error } = useQuery(GET_ACTIVITIES, {
+    variables: { itinerary_id },
     skip: shouldSkipQueries
   });
 
@@ -79,7 +84,11 @@ const MapContent: React.FC<MapContentProps> = ({
 
   // アクティビティデータを日付別に整理
   useEffect(() => {
-    const activities = isNewGroup ? localActivities : (activitiesData?.activities || []);
+    // itinerary_idがある場合は常にactivitiesDataを使用
+    // localActivitiesはitinerary_idがない場合のみ使用
+    const activities = itinerary_id && activitiesData?.activities
+      ? activitiesData.activities
+      : (isNewGroup ? localActivities : (activitiesData?.activities || []));
 
     if (activities.length > 0) {
       const grouped: {[key: number]: Activity[]} = {};
@@ -107,7 +116,7 @@ const MapContent: React.FC<MapContentProps> = ({
     } else {
       setActivitiesByDay({});
     }
-  }, [activitiesData, localActivities, isNewGroup, groupData]);
+  }, [activitiesData, localActivities, isNewGroup, groupData, itinerary_id]);
 
   const { isLoaded } = useGoogleMaps();
 
@@ -239,82 +248,71 @@ const MapContent: React.FC<MapContentProps> = ({
                 />
               ))}
 
-            {/* アクティビティ間の移動ルート */}
-            {activitiesByDay[selectedDay] && activitiesByDay[selectedDay].length > 1 && (
-              <Polyline
-                path={activitiesByDay[selectedDay]
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map(activity => ({ lat: activity.lat!, lng: activity.lng! }))}
-                options={{
-                  strokeColor: '#4285F4',
-                  strokeOpacity: 0.8,
-                  strokeWeight: 3,
-                  geodesic: true
-                }}
-              />
-            )}
-
             {selectedActivity && (
               <OverlayView
                 position={{ lat: selectedActivity.lat!, lng: selectedActivity.lng! }}
                 mapPaneName='overlayMouseTarget'
               >
-                <div className="relative bg-white rounded-lg shadow-lg border border-gray-200 max-w-xs min-w-64 transform -translate-x-1/2 -translate-y-full mb-2">
+                <div className="relative bg-white rounded-lg shadow-xl border border-gray-200 w-64 sm:w-72 transform -translate-x-1/2 -translate-y-full mb-2">
                   {/* 閉じるボタン */}
                   <button
                     onClick={() => setSelectedActivity(null)}
-                    className="absolute top-2 right-2 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 text-sm z-10"
+                    className="absolute top-1.5 right-1.5 w-5 h-5 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 text-xs z-10"
                   >
                     ×
                   </button>
 
+                  {/* 画像 */}
+                  {selectedActivity.photo_url && (
+                    <Image
+                      src={selectedActivity.photo_url}
+                      alt={selectedActivity.name}
+                      width={400}
+                      height={160}
+                      className="w-full h-28 sm:h-32 object-cover rounded-t-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  )}
+
                   {/* コンテンツ */}
-                  <div className="p-4">
-                    <div className="flex items-center mb-2">
+                  <div className="p-3">
+                    <div className="flex items-start gap-2 mb-2">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold mr-2"
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5"
                         style={{ backgroundColor: getMarkerColor(selectedActivity.type) }}
                       >
                         {activitiesByDay[selectedDay]
                           ?.sort((a, b) => a.time.localeCompare(b.time))
                           .findIndex(activity => activity.id === selectedActivity.id) + 1}
                       </div>
-                      <h3 className="font-bold text-lg pr-6">{selectedActivity.name}</h3>
+                      <div className="flex-1 pr-4">
+                        <h3 className="font-bold text-sm leading-tight mb-1">{selectedActivity.name}</h3>
+                        <p className="text-xs text-gray-600 leading-tight">{selectedActivity.location}</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">{selectedActivity.location}</p>
 
-                    <div className="space-y-1 mb-3">
-                      <p className="text-sm">
-                        <span className="font-medium">時間:</span> {selectedActivity.time}
-                      </p>
-                      <p className="text-sm">
-                        <span className="font-medium">タイプ:</span> {getTypeLabel(selectedActivity.type)}
-                      </p>
+                    <div className="flex gap-3 text-xs text-gray-700 mb-2">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">🕐</span>
+                        <span>{selectedActivity.time}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">📍</span>
+                        <span>{getTypeLabel(selectedActivity.type)}</span>
+                      </div>
                     </div>
 
                     {selectedActivity.notes && (
-                      <p className="text-sm text-gray-700 mb-3">{selectedActivity.notes}</p>
-                    )}
-
-                    {selectedActivity.photo_url && (
-                      <Image
-                        src={selectedActivity.photo_url}
-                        alt={selectedActivity.name}
-                        width={400}
-                        height={128}
-                        className="w-full h-32 object-cover rounded"
-                        onError={(e) => {
-                          console.error('Image load error in map:', selectedActivity.photo_url);
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
+                      <p className="text-xs text-gray-700 leading-relaxed">{selectedActivity.notes}</p>
                     )}
                   </div>
 
                   {/* 吹き出しの三角形 */}
                   <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-                    <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-white filter drop-shadow-sm"></div>
+                    <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white filter drop-shadow-sm"></div>
                   </div>
                 </div>
               </OverlayView>

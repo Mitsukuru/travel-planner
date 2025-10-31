@@ -69,6 +69,7 @@ interface DayPlan {
 export default function TravelPlanner() {
   const params = useParams();
   const groupToken = params.token as string;
+  const travelPlannerId = params.travelPlannerId as string;
 
   const [groupData, setGroupData] = useState<GroupData | null>(null);
   const [isNewGroup, setIsNewGroup] = useState(false);
@@ -82,7 +83,8 @@ export default function TravelPlanner() {
     skip: shouldSkipQueries
   });
   const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES, {
-    skip: shouldSkipQueries
+    variables: { itinerary_id: createdItineraryId || parseInt(travelPlannerId) },
+    skip: shouldSkipQueries || (!createdItineraryId && !travelPlannerId)
   });
   const [deleteActivity] = useMutation(DELETE_ACTIVITY);
   const [insertItinerary] = useMutation(INSERT_ITINERARY);
@@ -725,6 +727,7 @@ export default function TravelPlanner() {
                 groupToken={groupToken}
                 isNewGroup={isNewGroup}
                 groupData={groupData}
+                itinerary_id={travelPlan.id}
               />
             </div>
           ) : activeTab === "budget" ? (

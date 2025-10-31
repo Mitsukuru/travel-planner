@@ -29,8 +29,8 @@ export const GET_ITINERARIES = gql`
 `;
 
 export const GET_ACTIVITIES = gql`
-query activities {
-  activities {
+query activities($itinerary_id: Int!) {
+  activities(where: { itinerary_id: { _eq: $itinerary_id } }, order_by: { date: asc, time: asc }) {
     id
 		itinerary_id
 		name
