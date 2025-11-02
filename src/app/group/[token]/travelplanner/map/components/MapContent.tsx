@@ -137,14 +137,19 @@ const MapContent: React.FC<MapContentProps> = ({
       }
     });
 
+    // スマホかどうかを判定
+    const isMobile = window.innerWidth < 768;
+    // スマホの場合はより大きなパディングを設定
+    const padding = isMobile ? 80 : 100;
+
     // アクティビティが1つの場合は適切なズームレベルを設定
     if (activitiesByDay[selectedDay].length === 1) {
       const activity = activitiesByDay[selectedDay][0];
       map.setCenter({ lat: activity.lat!, lng: activity.lng! });
-      map.setZoom(15);
+      map.setZoom(14);
     } else {
       // 複数のアクティビティがある場合は全て表示
-      map.fitBounds(bounds, 50); // 50px のパディング
+      map.fitBounds(bounds, padding);
     }
   }, [map, selectedDay, activitiesByDay]);
 

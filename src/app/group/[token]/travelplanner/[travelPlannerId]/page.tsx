@@ -770,7 +770,7 @@ export default function TravelPlanner() {
                     .map((activity, index) => (
                       <div key={index} className="group">
                         {/* モバイル: 時間を上に表示 */}
-                        <div className="lg:hidden flex items-center mb-2 ml-6">
+                        <div className="lg:hidden flex items-center mb-2 px-4">
                           <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
                           <span className="text-sm text-gray-500 font-medium">
                             {formatTime(activity.time)}
@@ -778,7 +778,7 @@ export default function TravelPlanner() {
                         </div>
 
                         {/* デスクトップ: 従来のレイアウト */}
-                        <div className="flex">
+                        <div className="flex lg:flex-row">
                           {/* 時間列（デスクトップのみ） */}
                           <div className="hidden lg:block w-20 pt-1 text-right pr-4 text-gray-500 font-medium">
                             {formatTime(activity.time)}
@@ -795,7 +795,7 @@ export default function TravelPlanner() {
                           </div>
 
                           {/* モバイル用の縦線 */}
-                          <div className="lg:hidden relative flex flex-col items-center ml-6 mr-3">
+                          <div className="lg:hidden relative flex flex-col items-center mx-4">
                             {index <
                               (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
                               1 && (
@@ -804,7 +804,7 @@ export default function TravelPlanner() {
                           </div>
 
                           {/* 内容 */}
-                          <div className="lg:ml-4 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
+                          <div className="lg:ml-4 ml-3 mr-4 lg:mr-0 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
                           {/* 背景画像 */}
                           {activity.photo_url && (
                             <>
@@ -873,11 +873,11 @@ export default function TravelPlanner() {
                     {/* アクティビティ追加ボタン */}
                     <div className="flex">
                       <div className="hidden lg:block w-20"></div>
-                      <div className="relative flex flex-col items-center lg:ml-0 ml-6">
+                      <div className="relative flex flex-col items-center lg:ml-0 mx-4">
                         <div className="w-3 h-3 rounded-full bg-gray-300"></div>
                       </div>
                       <button
-                        className="lg:ml-4 ml-3 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="lg:ml-4 ml-3 mr-4 lg:mr-0 border border-dashed border-gray-300 rounded-lg p-4 flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50"
                         onClick={() => {
                           // 現在選択されている日の実際の日付を計算
                           const selectedDate = new Date(startDate);
