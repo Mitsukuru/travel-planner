@@ -7,7 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import MapContent from "../map/components/MapContent";
 import BudgetContent from "../budget/components/BudgetContent";
-import { GET_ITINERARIES, GET_ACTIVITIES } from "@/graphql/queries";
+import { GET_ITINERARIES, GET_ITINERARY_BY_ID, GET_ACTIVITIES } from "@/graphql/queries";
 import { DELETE_ACTIVITY, INSERT_ITINERARY, INSERT_GROUP } from "@/graphql/mutates";
 import { GoogleMapsProvider } from "@/components/GoogleMapsProvider";
 import {
@@ -79,9 +79,17 @@ export default function TravelPlanner() {
   // Only run GraphQL queries for existing groups, or for new groups after itinerary is created
   const shouldSkipQueries = Boolean(isNewGroup && groupData && !createdItineraryId);
 
-  const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES, {
-    skip: shouldSkipQueries
+  // 既存の旅行プラン（travelPlannerIdがある場合）は個別に取得
+  const { data: itineraryData, loading: itineraryLoading, error: itineraryError } = useQuery(GET_ITINERARY_BY_ID, {
+    variables: { id: parseInt(travelPlannerId) },
+    skip: !travelPlannerId || isNewGroup
   });
+
+  // 新規作成時の全itineraries取得（互換性のため残す）
+  const { data: itinerariesData, loading, error } = useQuery(GET_ITINERARIES, {
+    skip: shouldSkipQueries || !!travelPlannerId
+  });
+
   const { data: activitiesData, refetch: refetchActivities } = useQuery(GET_ACTIVITIES, {
     variables: { itinerary_id: createdItineraryId || parseInt(travelPlannerId) },
     skip: shouldSkipQueries || (!createdItineraryId && !travelPlannerId)
@@ -106,6 +114,13 @@ export default function TravelPlanner() {
 
   // Load group data from localStorage if it's a new group
   useEffect(() => {
+    // travelPlannerIdがある場合は既存の旅行プランなのでlocalStorageを使用しない
+    if (travelPlannerId) {
+      setIsNewGroup(false);
+      return;
+    }
+
+    // travelPlannerIdがない場合のみlocalStorageを確認
     if (groupToken) {
       const storedGroupData = localStorage.getItem(`group_${groupToken}`);
       if (storedGroupData) {
@@ -127,7 +142,7 @@ export default function TravelPlanner() {
         setIsNewGroup(false);
       }
     }
-  }, [groupToken]);
+  }, [groupToken, travelPlannerId]);
 
   // Create group in database for new groups
   useEffect(() => {
@@ -193,7 +208,7 @@ export default function TravelPlanner() {
   }, [isNewGroup, groupData, createdGroupId, createdItineraryId, groupToken, insertItinerary]);
 
 
-  if (loading && !isNewGroup) {
+  if ((loading || itineraryLoading) && !isNewGroup) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -204,13 +219,13 @@ export default function TravelPlanner() {
     );
   }
 
-  if (error && !isNewGroup) {
-    console.error("GraphQL Error Details:", error);
+  if ((error || itineraryError) && !isNewGroup) {
+    console.error("GraphQL Error Details:", error || itineraryError);
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center text-red-600">
           <h2 className="text-xl font-bold mb-2">エラーが発生しました</h2>
-          <p>{error.message}</p>
+          <p>{(error || itineraryError)?.message}</p>
           <p className="mt-4">
             <Link href="/group" className="text-blue-600 hover:underline">
               グループ一覧に戻る
@@ -267,7 +282,10 @@ export default function TravelPlanner() {
     };
   } else {
     // For existing groups, use GraphQL data
-    if (!itinerariesData?.itineraries?.[0]) {
+    // travelPlannerIdがある場合は個別取得したデータを使用
+    const itinerary = travelPlannerId ? itineraryData?.itineraries_by_pk : itinerariesData?.itineraries?.[0];
+
+    if (!itinerary) {
       return (
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
@@ -287,7 +305,7 @@ export default function TravelPlanner() {
       );
     }
 
-    travelPlan = itinerariesData.itineraries[0];
+    travelPlan = itinerary;
     startDate = new Date(travelPlan.start_date);
     endDate = new Date(travelPlan.end_date);
     termDay = Math.ceil((endDate.getTime() - startDate.getTime() + 1) / 86400000);
