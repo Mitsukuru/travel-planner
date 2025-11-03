@@ -114,17 +114,29 @@ export default function TravelPlanner() {
 
   // Load group data from localStorage if it's a new group
   useEffect(() => {
-    // travelPlannerIdがある場合は既存の旅行プランなのでlocalStorageを使用しない
-    if (travelPlannerId) {
-      setIsNewGroup(false);
-      return;
-    }
-
-    // travelPlannerIdがない場合のみlocalStorageを確認
     if (groupToken) {
       const storedGroupData = localStorage.getItem(`group_${groupToken}`);
       if (storedGroupData) {
         const parsed = JSON.parse(storedGroupData);
+
+        // travelPlannerIdがある場合は既存の旅行プランへのアクセス
+        if (travelPlannerId) {
+          // localStorageに保存されているitinerary_idと一致するか確認
+          if (parsed.createdItineraryId && parsed.createdItineraryId === parseInt(travelPlannerId)) {
+            // 同じトークンで作成された旅行プラン
+            setGroupData(parsed);
+            setIsNewGroup(false);
+            setCreatedGroupId(parsed.createdGroupId);
+            setCreatedItineraryId(parsed.createdItineraryId);
+            setParticipants(parsed.participants || []);
+          } else {
+            // 異なるトークンまたは既存の旅行プラン
+            setIsNewGroup(false);
+          }
+          return;
+        }
+
+        // travelPlannerIdがない場合は新規作成中
         setGroupData(parsed);
         setIsNewGroup(true);
         setParticipants(parsed.participants);
@@ -294,6 +306,27 @@ export default function TravelPlanner() {
             </h2>
             <p className="text-gray-600 mb-4">
               指定されたトークンに対応する旅行プランは存在しません。
+            </p>
+            <p>
+              <Link href="/group" className="text-blue-600 hover:underline">
+                グループ一覧に戻る
+              </Link>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // createdGroupIdが設定されている場合、itineraryのgroup_idと一致するか検証
+    if (createdGroupId && itinerary.group_id !== createdGroupId) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2 text-red-600">
+              アクセス権限がありません
+            </h2>
+            <p className="text-gray-600 mb-4">
+              この旅行プランにアクセスする権限がありません。
             </p>
             <p>
               <Link href="/group" className="text-blue-600 hover:underline">
