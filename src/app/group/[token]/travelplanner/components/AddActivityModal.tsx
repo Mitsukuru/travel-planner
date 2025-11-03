@@ -66,7 +66,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    let currentDate = new Date(start);
+    const currentDate = new Date(start);
     let dayNumber = 1;
 
     while (currentDate <= end) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import { INSERT_BUDGET } from '@/graphql/mutates';
 import { GET_ACTIVITIES_BY_DATE, GET_ITINERARIES } from '@/graphql/queries';
@@ -42,11 +42,20 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   // 旅行プラン情報を取得
   const { data: itinerariesData } = useQuery(GET_ITINERARIES);
   const currentItinerary = itinerariesData?.itineraries?.[0];
-  
-  // 旅行の日程計算
-  const startDate = currentItinerary ? new Date(currentItinerary.start_date) : null;
-  const endDate = currentItinerary ? new Date(currentItinerary.end_date) : null;
-  const totalDays = startDate && endDate ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0;
+
+  // 旅行の日程計算（useMemoでメモ化）
+  const startDate = useMemo(() =>
+    currentItinerary ? new Date(currentItinerary.start_date) : null,
+    [currentItinerary]
+  );
+  const endDate = useMemo(() =>
+    currentItinerary ? new Date(currentItinerary.end_date) : null,
+    [currentItinerary]
+  );
+  const totalDays = useMemo(() =>
+    startDate && endDate ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0,
+    [startDate, endDate]
+  );
 
   // 日程から日付を取得
   const getDayDate = (dayNumber: number): string => {
