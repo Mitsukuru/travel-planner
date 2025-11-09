@@ -239,8 +239,8 @@ export default function TravelPlanner() {
           <h2 className="text-xl font-bold mb-2">エラーが発生しました</h2>
           <p>{(error || itineraryError)?.message}</p>
           <p className="mt-4">
-            <Link href="/group" className="text-blue-600 hover:underline">
-              グループ一覧に戻る
+            <Link href="/group/new" className="text-blue-600 hover:underline">
+              グループ作成画面に戻る
             </Link>
           </p>
         </div>
@@ -308,8 +308,8 @@ export default function TravelPlanner() {
               指定されたトークンに対応する旅行プランは存在しません。
             </p>
             <p>
-              <Link href="/group" className="text-blue-600 hover:underline">
-                グループ一覧に戻る
+              <Link href="/group/new" className="text-blue-600 hover:underline">
+                グループ作成画面に戻る
               </Link>
             </p>
           </div>
@@ -329,8 +329,8 @@ export default function TravelPlanner() {
               この旅行プランにアクセスする権限がありません。
             </p>
             <p>
-              <Link href="/group" className="text-blue-600 hover:underline">
-                グループ一覧に戻る
+              <Link href="/group/new" className="text-blue-600 hover:underline">
+                グループ作成画面に戻る
               </Link>
             </p>
           </div>
