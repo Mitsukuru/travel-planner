@@ -1,6 +1,6 @@
 services:
   web:
-    image: node:18
+    image: node:20
     restart: always
     volumes:
       - .:/opt/web
