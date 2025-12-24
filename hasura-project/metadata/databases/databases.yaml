@@ -1,4 +1,4 @@
-- name: travel-planner-prd
+- name: default
   kind: postgres
   configuration:
     connection_info:
@@ -6,4 +6,14 @@
         from_env: PG_DATABASE_URL
       isolation_level: read-committed
       use_prepared_statements: false
-  tables: "!include travel-planner-prd/tables/tables.yaml"
+  tables: "!include default/tables/tables.yaml"
+# 本番用データベース（ローカル開発時はコメントアウト）
+# - name: travel-planner-prd
+#   kind: postgres
+#   configuration:
+#     connection_info:
+#       database_url:
+#         from_env: PG_DATABASE_URL
+#       isolation_level: read-committed
+#       use_prepared_statements: false
+#   tables: "!include travel-planner-prd/tables/tables.yaml"
