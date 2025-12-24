@@ -165,6 +165,7 @@ export default function TravelPlanner() {
           const result = await insertGroup({
             variables: {
               name: groupData.groupName || 'New Group',
+              token: groupToken,
             }
           });
           const newGroupId = result.data?.insert_groups?.returning?.[0]?.id;
@@ -194,10 +195,10 @@ export default function TravelPlanner() {
             variables: {
               group_id: createdGroupId,
               title: groupData.groupName || 'New Trip',
-              destination: groupData.destinations || [],
+              destination: Array.isArray(groupData.destinations) ? groupData.destinations.join(', ') : (groupData.destinations || ''),
               start_date: groupData.startDate,
               end_date: groupData.endDate,
-              travel_purpose: groupData.purposes || [],
+              travel_purpose: Array.isArray(groupData.purposes) ? groupData.purposes.join(', ') : (groupData.purposes || ''),
               location_type: groupData.tripType,
               created_by: null,
             }

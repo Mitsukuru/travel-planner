@@ -4,9 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useMutation } from '@apollo/client';
+import { INSERT_GROUP, INSERT_ITINERARY } from '@/graphql/mutates';
 
 export default function Group() {
   const router = useRouter();
+  const [insertGroup] = useMutation(INSERT_GROUP);
+  const [insertItinerary] = useMutation(INSERT_ITINERARY);
   const [participants, setParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
   const [tripType, setTripType] = useState('domestic');
@@ -100,27 +104,50 @@ export default function Group() {
       return;
     }
 
-    // グループトークン生成
-    const token = generateGroupToken();
+    try {
+      // グループトークン生成
+      const token = generateGroupToken();
 
-    // グループデータを作成
-    const groupData = {
-      groupName: groupName.trim(),
-      tripType,
-      destinations: tripType === 'domestic' ? selectedPrefectures : selectedCountries,
-      startDate,
-      endDate,
-      purposes,
-      participants: ['あなた（作成者）', ...participants],
-      createdAt: new Date().toISOString(),
-      token
-    };
+      // グループをデータベースに保存
+      const { data: groupData } = await insertGroup({
+        variables: {
+          name: groupName.trim(),
+          token: token,
+        },
+      });
 
-    // localStorageに保存
-    localStorage.setItem(`group_${token}`, JSON.stringify(groupData));
+      if (!groupData?.insert_groups?.returning?.[0]) {
+        throw new Error('グループの作成に失敗しました');
+      }
 
-    // しおり作成画面に遷移
-    router.push(`/group/${token}/travelplanner/1`);
+      const groupId = groupData.insert_groups.returning[0].id;
+
+      // 旅程をデータベースに保存
+      const destinations = tripType === 'domestic' ? selectedPrefectures : selectedCountries;
+      const { data: itineraryData } = await insertItinerary({
+        variables: {
+          group_id: groupId,
+          title: groupName.trim(),
+          destination: destinations.join(', '), // 配列を文字列に変換
+          start_date: startDate,
+          end_date: endDate,
+          travel_purpose: purposes.join(', '), // 配列を文字列に変換
+          location_type: tripType,
+        },
+      });
+
+      if (!itineraryData?.insert_itineraries?.returning?.[0]) {
+        throw new Error('旅程の作成に失敗しました');
+      }
+
+      const itineraryId = itineraryData.insert_itineraries.returning[0].id;
+
+      // しおり作成画面に遷移
+      router.push(`/group/${token}/travelplanner/${itineraryId}`);
+    } catch (error) {
+      console.error('エラーが発生しました:', error);
+      alert('データの保存に失敗しました。もう一度お試しください。');
+    }
   };
 
   return ( 

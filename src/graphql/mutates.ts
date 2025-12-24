@@ -181,16 +181,19 @@ export const DELETE_ACTIVITY = gql`
 export const INSERT_GROUP = gql`
   mutation InsertGroup(
     $name: String!
+    $token: String!
   ) {
     insert_groups(
       objects: {
         name: $name
+        token: $token
       }
     ) {
       affected_rows
       returning {
         id
         name
+        token
         created_at
         updated_at
       }
@@ -202,10 +205,10 @@ export const INSERT_ITINERARY = gql`
   mutation InsertItinerary(
     $group_id: uuid!
     $title: String!
-    $destination: [String!]!
+    $destination: String
     $start_date: date!
     $end_date: date!
-    $travel_purpose: [String!]
+    $travel_purpose: String
     $location_type: String!
     $created_by: Int
   ) {
