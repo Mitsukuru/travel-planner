@@ -36,10 +36,10 @@ interface BudgetContentProps {
     end_date: string;
     destination: string;
   };
+  selectedDay?: number;
 }
 
-const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itinerary_id, itinerary }) => {
-  const selectedDay = 1; // デフォルト値
+const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itinerary_id, itinerary, selectedDay = 1 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [tripBudget, setTripBudget] = useState<number>(0);
@@ -299,6 +299,10 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
           onBudgetAdded={onBudgetAdded}
           defaultDate={selectedDate}
           participants={participants}
+          itinerary={currentItinerary ? {
+            start_date: currentItinerary.start_date,
+            end_date: currentItinerary.end_date,
+          } : undefined}
         />
       )}
       </div>

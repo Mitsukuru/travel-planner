@@ -792,6 +792,7 @@ export default function TravelPlanner() {
                 end_date: travelPlan.end_date,
                 destination: travelPlan.destination,
               }}
+              selectedDay={selectedDay}
             />
           ) : (
             <>

@@ -10,6 +10,10 @@ interface AddBudgetModalProps {
   onBudgetAdded: () => void;
   defaultDate?: string;
   participants?: string[];
+  itinerary?: {
+    start_date: string;
+    end_date: string;
+  };
 }
 
 // アクティビティタイプの日本語マッピング
@@ -28,10 +32,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   itineraryId,
   onBudgetAdded,
   defaultDate = '',
-  participants = []
+  participants = [],
+  itinerary
 }) => {
   const [formData, setFormData] = useState({
-    dayNumber: 1,
+    date: defaultDate || '',
     activityId: '',
     amount: '',
     description: '',
@@ -39,9 +44,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     paidBy: participants[0] || '' // デフォルトで最初の参加者を選択
   });
 
-  // 旅行プラン情報を取得
-  const { data: itinerariesData } = useQuery(GET_ITINERARIES);
-  const currentItinerary = itinerariesData?.itineraries?.[0];
+  // 旅行プラン情報を取得（propsで渡されていない場合のフォールバック）
+  const { data: itinerariesData } = useQuery(GET_ITINERARIES, {
+    skip: Boolean(itinerary) // itineraryが渡されている場合はクエリをスキップ
+  });
+  const currentItinerary = itinerary || itinerariesData?.itineraries?.[0];
 
   // 旅行の日程計算（useMemoでメモ化）
   const startDate = useMemo(() =>
@@ -57,38 +64,59 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     [startDate, endDate]
   );
 
-  // 日程から日付を取得
-  const getDayDate = (dayNumber: number): string => {
-    if (!startDate) return '';
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + dayNumber - 1);
-    return date.toISOString().split('T')[0];
+  // 旅行期間の日付リストを生成（AddActivityModalと同じロジック）
+  const generateDateOptions = () => {
+    if (!currentItinerary) return [];
+
+    const dates: { value: string; label: string; dayNumber: number }[] = [];
+    const start = new Date(currentItinerary.start_date);
+    const end = new Date(currentItinerary.end_date);
+
+    const currentDate = new Date(start);
+    let dayNumber = 1;
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const formattedDate = new Intl.DateTimeFormat('ja-JP', {
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short'
+      }).format(currentDate);
+
+      dates.push({
+        value: dateStr,
+        label: `${dayNumber}日目 - ${formattedDate}`,
+        dayNumber: dayNumber
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+      dayNumber++;
+    }
+
+    return dates;
   };
 
-  // 選択された日程の日付
-  const selectedDate = getDayDate(formData.dayNumber);
+  const dateOptions = generateDateOptions();
+
+  // 選択された日付
+  const selectedDate = formData.date;
 
   const { data: activitiesData } = useQuery(GET_ACTIVITIES_BY_DATE, {
-    variables: { 
+    variables: {
       itinerary_id: itineraryId,
-      date: selectedDate 
+      date: selectedDate
     },
     skip: !selectedDate || !itineraryId,
   });
 
   const [insertBudget, { loading: isSubmitting }] = useMutation(INSERT_BUDGET);
 
+  // defaultDateが変更されたら日付を更新
   useEffect(() => {
-    // デフォルトの日付から日程を計算
-    if (defaultDate && startDate && totalDays > 0) {
-      const defaultDateObj = new Date(defaultDate);
-      const diffTime = defaultDateObj.getTime() - startDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      if (diffDays >= 1 && diffDays <= totalDays) {
-        setFormData(prev => ({ ...prev, dayNumber: diffDays }));
-      }
+    if (defaultDate) {
+      setFormData(prev => ({ ...prev, date: defaultDate }));
     }
-  }, [defaultDate, startDate, totalDays]);
+  }, [defaultDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +151,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
       onBudgetAdded();
       onClose();
       setFormData({
-        dayNumber: 1,
+        date: defaultDate || '',
         activityId: '',
         amount: '',
         description: '',
@@ -137,29 +165,10 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'dayNumber') {
-      setFormData(prev => ({ ...prev, [field]: parseInt(value) }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   if (!isOpen) return null;
-
-  // 日程選択肢を生成
-  const dayOptions = Array.from({ length: totalDays }, (_, i) => {
-    const dayNumber = i + 1;
-    const dayDate = getDayDate(dayNumber);
-    const formattedDate = new Date(dayDate + 'T00:00:00').toLocaleDateString('ja-JP', {
-      month: 'short',
-      day: 'numeric',
-      weekday: 'short'
-    });
-    return {
-      value: dayNumber,
-      label: `${dayNumber}日目 (${formattedDate})`
-    };
-  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
@@ -181,11 +190,12 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
             </label>
             <select
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={formData.dayNumber}
-              onChange={(e) => handleInputChange('dayNumber', e.target.value)}
+              value={formData.date}
+              onChange={(e) => handleInputChange('date', e.target.value)}
               required
             >
-              {dayOptions.map((option) => (
+              <option value="">日付を選択してください</option>
+              {dateOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
