@@ -24,6 +24,7 @@ export const GET_ITINERARIES = gql`
       title
       travel_purpose
       updated_at
+      total_budget
     }
   }
 `;
@@ -41,6 +42,7 @@ export const GET_ITINERARY_BY_ID = gql`
       title
       travel_purpose
       updated_at
+      total_budget
     }
   }
 `;
@@ -58,6 +60,7 @@ export const GET_ITINERARY_BY_GROUP = gql`
       title
       travel_purpose
       updated_at
+      total_budget
     }
   }
 `;

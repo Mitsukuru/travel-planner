@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import { GET_BUDGETS, GET_ITINERARIES } from '@/graphql/queries';
+import { UPDATE_ITINERARY_TOTAL_BUDGET } from '@/graphql/mutates';
 import BudgetByDate from './BudgetByDate';
 import AddBudgetModal from './AddBudgetModal';
 
@@ -42,7 +43,6 @@ interface BudgetContentProps {
 const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itinerary_id, itinerary, selectedDay = 1 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [tripBudget, setTripBudget] = useState<number>(0);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [editBudgetValue, setEditBudgetValue] = useState<string>('');
 
@@ -55,6 +55,12 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
   const currentItinerary = itinerary || itinerariesData?.itineraries?.[0];
   const itineraryId = itinerary_id || currentItinerary?.id;
 
+  // total_budgetの更新用ミューテーション
+  const [updateTotalBudget] = useMutation(UPDATE_ITINERARY_TOTAL_BUDGET);
+
+  // データベースからtotal_budgetを取得
+  const tripBudget = currentItinerary?.total_budget ? parseFloat(currentItinerary.total_budget) : 0;
+
   // 選択された日の日付を計算してstateを更新
   useEffect(() => {
     if (currentItinerary && selectedDay) {
@@ -65,16 +71,6 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
       setSelectedDate(dateString);
     }
   }, [currentItinerary, selectedDay]);
-
-  // 旅の予算をlocalStorageから読み込み
-  useEffect(() => {
-    if (itineraryId) {
-      const savedBudget = localStorage.getItem(`trip-budget-${itineraryId}`);
-      if (savedBudget) {
-        setTripBudget(parseFloat(savedBudget));
-      }
-    }
-  }, [itineraryId]);
 
   const { data: budgetsData, loading: budgetsLoading, refetch: refetchBudgets } = useQuery(GET_BUDGETS, {
     variables: { itinerary_id: itineraryId },
@@ -131,14 +127,24 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
     setIsEditingBudget(true);
   }, [tripBudget]);
 
-  const handleSaveBudget = useCallback(() => {
+  const handleSaveBudget = useCallback(async () => {
     const newBudget = parseFloat(editBudgetValue) || 0;
-    setTripBudget(newBudget);
     if (itineraryId) {
-      localStorage.setItem(`trip-budget-${itineraryId}`, newBudget.toString());
+      try {
+        await updateTotalBudget({
+          variables: {
+            id: itineraryId,
+            total_budget: newBudget
+          },
+          refetchQueries: ['itineraries', 'itinerary_by_pk']
+        });
+        setIsEditingBudget(false);
+      } catch (error) {
+        console.error('予算の更新に失敗しました:', error);
+        alert('予算の更新に失敗しました');
+      }
     }
-    setIsEditingBudget(false);
-  }, [editBudgetValue, itineraryId]);
+  }, [editBudgetValue, itineraryId, updateTotalBudget]);
 
   const handleCancelEditBudget = useCallback(() => {
     setIsEditingBudget(false);

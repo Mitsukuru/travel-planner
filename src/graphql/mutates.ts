@@ -236,7 +236,24 @@ export const INSERT_ITINERARY = gql`
         location_type
         created_by
         updated_at
+        total_budget
       }
+    }
+  }
+`;
+
+export const UPDATE_ITINERARY_TOTAL_BUDGET = gql`
+  mutation UpdateItineraryTotalBudget(
+    $id: Int!
+    $total_budget: numeric!
+  ) {
+    update_itineraries_by_pk(
+      pk_columns: { id: $id }
+      _set: { total_budget: $total_budget }
+    ) {
+      id
+      total_budget
+      updated_at
     }
   }
 `;
