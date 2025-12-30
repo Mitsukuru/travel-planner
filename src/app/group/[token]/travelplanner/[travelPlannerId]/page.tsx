@@ -259,6 +259,7 @@ export default function TravelPlanner() {
     destination: string;
     start_date: string;
     end_date: string;
+    total_budget?: string;
   };
 
   if (isNewGroup && groupData) {
@@ -791,6 +792,7 @@ export default function TravelPlanner() {
                 start_date: travelPlan.start_date,
                 end_date: travelPlan.end_date,
                 destination: travelPlan.destination,
+                total_budget: travelPlan.total_budget,
               }}
               selectedDay={selectedDay}
             />

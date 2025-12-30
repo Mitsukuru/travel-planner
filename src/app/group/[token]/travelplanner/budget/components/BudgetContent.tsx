@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_BUDGETS, GET_ITINERARIES } from '@/graphql/queries';
+import { GET_BUDGETS, GET_ITINERARIES, GET_ITINERARY_BY_ID } from '@/graphql/queries';
 import { UPDATE_ITINERARY_TOTAL_BUDGET } from '@/graphql/mutates';
 import BudgetByDate from './BudgetByDate';
 import AddBudgetModal from './AddBudgetModal';
@@ -36,6 +36,7 @@ interface BudgetContentProps {
     start_date: string;
     end_date: string;
     destination: string;
+    total_budget?: string;
   };
   selectedDay?: number;
 }
@@ -46,20 +47,28 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [editBudgetValue, setEditBudgetValue] = useState<string>('');
 
-  // propsでitinerary_idが渡されている場合はそれを使用、なければ全itinerariesを取得
-  const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES, {
-    skip: Boolean(itinerary_id && itinerary)
+  // itinerary_idが渡されている場合は個別にクエリ、なければ全itinerariesを取得
+  const { data: itineraryData, loading: itineraryLoading, refetch: refetchItinerary } = useQuery(GET_ITINERARY_BY_ID, {
+    variables: { id: itinerary_id },
+    skip: !itinerary_id
   });
 
-  // propsから渡されたitineraryを優先、なければ最初のitineraryを使用
-  const currentItinerary = itinerary || itinerariesData?.itineraries?.[0];
+  const { data: itinerariesData, loading: itinerariesLoading } = useQuery(GET_ITINERARIES, {
+    skip: Boolean(itinerary_id)
+  });
+
+  // itinerary_idがある場合は個別クエリの結果、なければitinerariesの最初、最後にpropsのitineraryをフォールバック
+  const currentItinerary = itineraryData?.itineraries_by_pk || itinerariesData?.itineraries?.[0] || itinerary;
   const itineraryId = itinerary_id || currentItinerary?.id;
+  const loading = itineraryLoading || itinerariesLoading;
 
   // total_budgetの更新用ミューテーション
   const [updateTotalBudget] = useMutation(UPDATE_ITINERARY_TOTAL_BUDGET);
 
-  // データベースからtotal_budgetを取得
-  const tripBudget = currentItinerary?.total_budget ? parseFloat(currentItinerary.total_budget) : 0;
+  // データベースからtotal_budgetを取得（リアクティブに更新されるようにuseMemoを使用）
+  const tripBudget = useMemo(() => {
+    return currentItinerary?.total_budget ? parseFloat(currentItinerary.total_budget) : 0;
+  }, [currentItinerary?.total_budget]);
 
   // 選択された日の日付を計算してstateを更新
   useEffect(() => {
@@ -136,22 +145,27 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
             id: itineraryId,
             total_budget: newBudget
           },
-          refetchQueries: ['itineraries', 'itinerary_by_pk']
+          refetchQueries: ['itineraries', 'itinerary_by_pk'],
+          awaitRefetchQueries: true
         });
+        // 明示的にitineraryを再取得
+        if (refetchItinerary) {
+          await refetchItinerary();
+        }
         setIsEditingBudget(false);
       } catch (error) {
         console.error('予算の更新に失敗しました:', error);
         alert('予算の更新に失敗しました');
       }
     }
-  }, [editBudgetValue, itineraryId, updateTotalBudget]);
+  }, [editBudgetValue, itineraryId, updateTotalBudget, refetchItinerary]);
 
   const handleCancelEditBudget = useCallback(() => {
     setIsEditingBudget(false);
     setEditBudgetValue('');
   }, []);
 
-  if (itinerariesLoading) {
+  if (loading) {
     return <div className="p-6">読み込み中...</div>;
   }
 
