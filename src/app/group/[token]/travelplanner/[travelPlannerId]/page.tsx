@@ -552,16 +552,16 @@ export default function TravelPlanner() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* タブナビゲーション */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center">
+        <div className="flex flex-row items-center">
           {/* ロゴ部分 */}
-          <div className="flex items-center px-4 py-2 sm:py-4">
+          <div className="flex items-center px-2 py-2 sm:px-4 sm:py-4">
             <Link href="/" className="flex items-center">
               <Image
                 src="/images/header_logo-removebg-preview.png"
                 alt="ヘッダー画像"
                 width={120}
                 height={90}
-                className="img-header h-8 w-auto sm:h-10"
+                className="img-header h-7 w-auto sm:h-10"
                 quality={100}
                 priority
               />
@@ -569,8 +569,8 @@ export default function TravelPlanner() {
           </div>
 
           {/* タブボタン部分 */}
-          <div className="flex overflow-x-auto sm:flex-1 px-4 sm:px-0">
-            <div className="flex space-x-2 sm:space-x-0 min-w-full sm:min-w-0">
+          <div className="flex overflow-x-auto flex-1">
+            <div className="flex space-x-1 sm:space-x-0">
               <button
                 className={`flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 font-bold text-sm sm:text-base ${
                   activeTab === "plan"
