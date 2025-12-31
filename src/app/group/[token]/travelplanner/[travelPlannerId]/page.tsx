@@ -112,6 +112,11 @@ export default function TravelPlanner() {
   const [editingParticipantIndex, setEditingParticipantIndex] = useState<number | null>(null);
   const [editingParticipantName, setEditingParticipantName] = useState("");
 
+  // スワイプ状態管理
+  const [swipedActivityId, setSwipedActivityId] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState<number>(0);
+  const [touchCurrent, setTouchCurrent] = useState<number>(0);
+
   // Load group data from localStorage if it's a new group
   useEffect(() => {
     if (groupToken) {
@@ -559,6 +564,41 @@ export default function TravelPlanner() {
     }
   };
 
+  // スワイプハンドラー
+  const handleTouchStart = (e: React.TouchEvent, activityId: number) => {
+    setTouchStart(e.touches[0].clientX);
+    setTouchCurrent(e.touches[0].clientX);
+    setSwipedActivityId(activityId);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === 0) return;
+    setTouchCurrent(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStart - touchCurrent;
+
+    // 50px以上左にスワイプした場合、ボタンを表示
+    if (diff > 50) {
+      // ボタンを表示したまま
+    } else {
+      // スワイプを元に戻す
+      setSwipedActivityId(null);
+    }
+
+    setTouchStart(0);
+    setTouchCurrent(0);
+  };
+
+  // スワイプ量を計算
+  const getSwipeOffset = (activityId: number) => {
+    if (swipedActivityId === activityId && touchStart !== 0) {
+      const diff = touchStart - touchCurrent;
+      return Math.min(Math.max(diff, 0), 120); // 0〜120pxの範囲で制限
+    }
+    return swipedActivityId === activityId ? 120 : 0;
+  };
 
   return (
     <GoogleMapsProvider>
@@ -898,68 +938,108 @@ export default function TravelPlanner() {
                           </div>
 
                           {/* 内容 */}
-                          <div className="lg:ml-4 ml-3 mr-4 lg:mr-0 bg-white rounded-lg border border-gray-200 flex-1 shadow-sm group-hover:shadow overflow-hidden relative">
-                          {/* 背景画像 */}
-                          {activity.photo_url && (
-                            <>
-                              {console.log('Rendering image for activity:', activity.name, 'URL:', activity.photo_url)}
-                              <div className="absolute inset-0 flex">
-                                <div className="flex-1"></div>
-                                <div className="w-1/2 h-full relative">
-                                  <Image
-                                    src={activity.photo_url}
-                                    alt={activity.name}
-                                    fill
-                                    className="object-cover"
-                                    onError={(e) => {
-                                      console.error('Image load error for:', activity.photo_url);
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                    }}
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
+                          <div className="lg:ml-4 ml-3 mr-4 lg:mr-0 flex-1 relative overflow-hidden">
+                            {/* アクションボタン（スワイプで表示） */}
+                            <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1 pr-2">
+                              <button
+                                onClick={() => {
+                                  startEditActivity(activity);
+                                  setSwipedActivityId(null);
+                                }}
+                                className="w-12 h-12 bg-blue-500 text-white rounded-lg flex items-center justify-center shadow-lg"
+                                title="編集"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDeleteActivity(index);
+                                  setSwipedActivityId(null);
+                                }}
+                                className="w-12 h-12 bg-red-500 text-white rounded-lg flex items-center justify-center shadow-lg"
+                                title="削除"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            {/* スワイプ可能なコンテンツ */}
+                            <div
+                              className="bg-white rounded-lg border border-gray-200 shadow-sm group-hover:shadow overflow-hidden relative transition-transform duration-200 ease-out"
+                              style={{
+                                transform: `translateX(-${getSwipeOffset(activity.id)}px)`
+                              }}
+                              onTouchStart={(e) => handleTouchStart(e, activity.id)}
+                              onTouchMove={handleTouchMove}
+                              onTouchEnd={handleTouchEnd}
+                            >
+                              {/* 背景画像 */}
+                              {activity.photo_url && (
+                                <>
+                                  {console.log('Rendering image for activity:', activity.name, 'URL:', activity.photo_url)}
+                                  <div className="absolute inset-0 flex">
+                                    <div className="flex-1"></div>
+                                    <div className="w-1/2 h-full relative">
+                                      <Image
+                                        src={activity.photo_url}
+                                        alt={activity.name}
+                                        fill
+                                        className="object-cover"
+                                        onError={(e) => {
+                                          console.error('Image load error for:', activity.photo_url);
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent"></div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              <div className="relative z-10 p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-start flex-1">
+                                    <div className="mr-3">
+                                      {getActivityIcon(activity.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="font-medium text-gray-800">
+                                        {activity.name}
+                                      </h3>
+                                      <p className="text-gray-600 text-sm mt-1">
+                                        {activity.notes}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {/* デスクトップ用ボタン */}
+                                  <div className="hidden lg:flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => startEditActivity(activity)}
+                                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                      title="編集"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteActivity(index)}
+                                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                      title="削除"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            </>
-                          )}
-                          <div className="relative z-10 p-4">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-start flex-1">
-                                <div className="mr-3">
-                                  {getActivityIcon(activity.type)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-gray-800">
-                                    {activity.name}
-                                  </h3>
-                                  <p className="text-gray-600 text-sm mt-1">
-                                    {activity.notes}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => startEditActivity(activity)}
-                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                  title="編集"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteActivity(index)}
-                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                  title="削除"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
                               </div>
                             </div>
                           </div>
-                        </div>
                         </div>
                       </div>
                     ))}
