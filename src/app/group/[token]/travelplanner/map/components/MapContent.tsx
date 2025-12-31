@@ -61,6 +61,7 @@ const MapContent: React.FC<MapContentProps> = ({
   const [activitiesByDay, setActivitiesByDay] = useState<{[key: number]: Activity[]}>({});
   const [localActivities, setLocalActivities] = useState<Activity[]>([]);
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
 
   // itinerary_idがある場合は常にクエリを実行
   // itinerary_idがない場合のみスキップ
@@ -119,6 +120,23 @@ const MapContent: React.FC<MapContentProps> = ({
   }, [activitiesData, localActivities, isNewGroup, groupData, itinerary_id]);
 
   const { isLoaded } = useGoogleMaps();
+
+  // 現在地を取得
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.log('位置情報の取得に失敗しました:', error);
+        }
+      );
+    }
+  }, []);
 
   const onLoad = useCallback((mapInstance: google.maps.Map) => {
     setMap(mapInstance);
@@ -193,6 +211,17 @@ const MapContent: React.FC<MapContentProps> = ({
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   };
 
+  // 現在地マーカーのアイコンを生成
+  const createCurrentLocationIcon = () => {
+    const svg = `
+      <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="11" fill="#4285F4" stroke="white" stroke-width="2"/>
+        <circle cx="12" cy="12" r="4" fill="white"/>
+      </svg>
+    `;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  };
+
   // アクティビティタイプの日本語表示
   const getTypeLabel = (type: string) => {
     const typeLabels: {[key: string]: string} = {
@@ -229,8 +258,45 @@ const MapContent: React.FC<MapContentProps> = ({
     );
   }
 
+  // 現在地にマップを移動
+  const handleRecenterToCurrentLocation = useCallback(() => {
+    if (map && currentLocation) {
+      map.panTo(currentLocation);
+      map.setZoom(15);
+    }
+  }, [map, currentLocation]);
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
+      {/* 現在地ボタン */}
+      {currentLocation && (
+        <button
+          onClick={handleRecenterToCurrentLocation}
+          className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors"
+          title="現在地を表示"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="w-6 h-6 text-blue-600"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* マップ */}
       <div className="w-full h-full">
         {isLoaded ? (
@@ -240,6 +306,16 @@ const MapContent: React.FC<MapContentProps> = ({
             zoom={10}
             onLoad={onLoad}
           >
+            {/* 現在地マーカー */}
+            {currentLocation && (
+              <Marker
+                position={currentLocation}
+                title="現在地"
+                icon={createCurrentLocationIcon()}
+                zIndex={1000}
+              />
+            )}
+
             {/* 順番でソートされたアクティビティのマーカー */}
             {activitiesByDay[selectedDay]
               ?.sort((a, b) => a.time.localeCompare(b.time))
