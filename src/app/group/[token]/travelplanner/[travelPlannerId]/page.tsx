@@ -440,6 +440,19 @@ export default function TravelPlanner() {
     }
   };
 
+  // アクティビティタイプに応じたマーカー色を取得
+  const getMarkerColor = (type: string) => {
+    const colors: {[key: string]: string} = {
+      'transport': '#3B82F6', // 青
+      'sightseeing': '#10B981', // 緑
+      'restaurant': '#F59E0B', // オレンジ
+      'hotel': '#8B5CF6', // 紫
+      'activity': '#EF4444', // 赤
+      'area': '#6B7280', // グレー
+    };
+    return colors[type] || '#6B7280';
+  };
+
   // 時間フォーマット関数（HH:MM:SS -> HH:MM）
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
@@ -826,7 +839,20 @@ export default function TravelPlanner() {
                       <div key={index} className="group">
                         {/* モバイル: 時間を上に表示 */}
                         <div className="lg:hidden flex items-center mb-2 px-4">
-                          <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center mr-3 flex-shrink-0 border-[3px]"
+                            style={{
+                              backgroundColor: 'white',
+                              borderColor: getMarkerColor(activity.type)
+                            }}
+                          >
+                            <span
+                              className="text-xs font-bold"
+                              style={{ color: getMarkerColor(activity.type) }}
+                            >
+                              {index + 1}
+                            </span>
+                          </div>
                           <span className="text-sm text-gray-500 font-medium">
                             {formatTime(activity.time)}
                           </span>
@@ -841,7 +867,20 @@ export default function TravelPlanner() {
 
                           {/* タイムラインの縦線（デスクトップのみ） */}
                           <div className="hidden lg:flex relative flex-col items-center">
-                            <div className="w-3 h-3 rounded-full bg-blue-500 aspect-square flex-shrink-0"></div>
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-[3px]"
+                              style={{
+                                backgroundColor: 'white',
+                                borderColor: getMarkerColor(activity.type)
+                              }}
+                            >
+                              <span
+                                className="text-xs font-bold"
+                                style={{ color: getMarkerColor(activity.type) }}
+                              >
+                                {index + 1}
+                              </span>
+                            </div>
                             {index <
                               (activities.find((day) => day.day === selectedDay)?.activities?.length ?? 0) -
                               1 && (
