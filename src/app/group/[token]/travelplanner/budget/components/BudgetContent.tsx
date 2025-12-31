@@ -185,19 +185,19 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
       <div className="max-w-6xl mx-auto p-6">
         {/* ヘッダーセクション */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4 items-center">
             {/* 統計とボタン */}
-            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-center lg:text-left">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-center items-center w-full lg:w-auto">
+              <div className="bg-gray-50 rounded-lg p-4 w-full max-w-xs lg:w-auto">
+                <div className="text-center">
                   <div className="text-sm text-gray-600 mb-1">本日までの支出</div>
                   <div className={`text-2xl font-bold ${isOverBudget ? 'text-red-600' : 'text-blue-600'}`}>
                     ¥{selectedDayTotal.toLocaleString()}
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-center lg:text-left">
+              <div className="bg-gray-50 rounded-lg p-4 w-full max-w-xs lg:w-auto">
+                <div className="text-center">
                   <div className="text-sm text-gray-600 mb-1">旅の予算</div>
                   {isEditingBudget ? (
                     <div className="flex items-center gap-2">
@@ -237,8 +237,8 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
                   )}
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-center lg:text-left">
+              <div className="bg-gray-50 rounded-lg p-4 w-full max-w-xs lg:w-auto">
+                <div className="text-center">
                   <div className="text-sm text-gray-600 mb-1">残予算</div>
                   <div className={`text-xl font-semibold ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
                     {isOverBudget ? '-' : ''}¥{Math.abs(budgetBalance).toLocaleString()}
@@ -247,7 +247,7 @@ const BudgetContent: React.FC<BudgetContentProps> = ({ participants = [], itiner
               </div>
               <button
                 onClick={handleAddBudget}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors w-full max-w-xs lg:w-auto"
               >
                 + 支出を追加
               </button>
