@@ -26,6 +26,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const [date, setDate] = useState(defaultDate || "");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [placeName, setPlaceName] = useState("");
   const [notes, setNotes] = useState("");
   const [type, setType] = useState(typeOptions[0].value);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
@@ -188,10 +189,16 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       placesService.current.getDetails(
         {
           placeId: suggestion.place_id,
-          fields: ['photos', 'name', 'formatted_address', 'geometry']
+          fields: ['photos', 'name', 'formatted_address', 'geometry'],
+          language: 'ja'
         },
         (place, status) => {
           if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+            // 場所の名前を保存（住所を除く）
+            if (place.name) {
+              setPlaceName(place.name);
+            }
+
             // 緯度・経度を取得
             if (place.geometry && place.geometry.location) {
               setLat(place.geometry.location.lat());
@@ -213,12 +220,15 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // placeNameがあれば使用、なければlocationを使用
+      const activityName = placeName || location;
+
       console.log('Submitting activity with data:', {
         itinerary_id,
         date,
         time,
         location,
-        name: location,
+        name: activityName,
         notes,
         type,
         photo_url: photoUrl,
@@ -233,7 +243,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
           date,
           time,
           location,
-          name: location,
+          name: activityName,
           notes,
           type,
           photo_url: photoUrl,
@@ -248,6 +258,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({ isOpen, onClose, it
       // フォームをリセット
       setTime("");
       setLocation("");
+      setPlaceName("");
       setNotes("");
       setType(typeOptions[0].value);
       setSuggestions([]);
